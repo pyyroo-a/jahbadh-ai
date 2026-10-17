@@ -61,6 +61,17 @@ and nothing flipped.
 Be strict but fair: never reject a claim only for style. Give exactly one verdict per claim id, with a short
 reason a writer can act on.
 {SHARED_RULES}""",
+    "persona": f"""You rewrite approved match desk lines for a different audience without changing what they say.
+Reply with exactly one rewrite per line, in the same order, one sentence each.
+Never add a fact, a number, a name, a cause or a minute that is not in the line. You may leave a number out,
+but every number you keep must be written exactly as it is in the line.
+{SHARED_RULES}""",
+}
+
+PERSONA_STYLES = {
+    "casual": "a casual fan: plain everyday words, warm and lively, and explain jargon like PPDA, xG or field "
+              "tilt in a few simple words",
+    "fantasy": "a fantasy football player: lead with the players involved and what the line means for their output",
 }
 
 KIND_FOCUS = {
@@ -131,3 +142,8 @@ def judge_prompt(run: "MomentRun", claims: list[Claim], mode: str, originals: di
     metrics, events = _cited([], claims)
     return (f"{moment_context(run.desk.match, run.moment)}\n\n{task}\nClaims:\n" + "\n".join(lines)
             + f"\n\n{evidence_block(run, metrics, events)}")
+
+
+def persona_prompt(persona: str, texts: list[str]) -> str:
+    lines = "\n".join(f"{i}. {t}" for i, t in enumerate(texts, 1))
+    return f"Rewrite these lines for {PERSONA_STYLES[persona]}.\nLines:\n{lines}"
