@@ -56,6 +56,12 @@ def p(id: int, team: str, x: float, t: float | None = None, y: float = 34.0) -> 
     return _ev(id, team, EventType.PASS, x, t, y=y, outcome=True, related_player_id=f"{team}-10")
 
 
+def pr(id: int, team: str, passer: str, receiver: str, t: float | None = None, x: float = 50.0) -> Event:
+    """Successful pass from passer to receiver."""
+    return Event(id=id, t=float(id) if t is None else t, period=1, team_id=team, player_id=passer,
+                 type=EventType.PASS, x=x, y=34.0, outcome=True, related_player_id=receiver)
+
+
 def shot(id: int, team: str, xg: float, t: float | None = None) -> Event:
     return _ev(id, team, EventType.SHOT, 95.0 if team == "NBR" else 10.0, t, xg=xg, outcome=False)
 
