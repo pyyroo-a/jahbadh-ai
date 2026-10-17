@@ -44,7 +44,7 @@ def zone_overloads(match: Match, team_id: str, start: float = 0, end: float = 54
     counts.index.names = ["t", "zone"]
     over = counts[counts["ours"] - counts["theirs"] >= margin].reset_index()
 
-    common = dict(id=metric_id("zone_overloads", team_id, start, end), name="zone_overloads", subject=team_id,
+    common = dict(id=metric_id("zone_overloads", team_id, start, end, **({"margin": margin} if margin != 2 else {})), name="zone_overloads", subject=team_id,
                   window=(start, end), unit="share_of_seconds", evidence_frames=(int(start), int(end) - 1))
     by_zone = (over.groupby("zone")["t"].nunique() / n_seconds).sort_index() if n_seconds else pd.Series()
     headline = by_zone[[z.split("-")[0] in HEADLINE_THIRDS for z in by_zone.index]]

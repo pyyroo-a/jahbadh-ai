@@ -18,7 +18,7 @@ def before_after(fn: Callable[..., Metric | dict[str, Metric]], match: Match, su
     missing = before.value is None or after.value is None
     frames = [f for f in (before.evidence_frames, after.evidence_frames) if f is not None]
     return Metric(
-        id=metric_id(name, subject, b_start, a_end),
+        id=metric_id(name, subject, b_start, a_end, at=int(at_t), window=int(window_s)),
         name=name,
         subject=subject,
         window=(b_start, a_end),

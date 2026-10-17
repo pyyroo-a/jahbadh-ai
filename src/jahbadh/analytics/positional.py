@@ -42,7 +42,7 @@ def heatmap(match: Match, subject: str, start: float = 0, end: float = 5400,
     rows = rows[rows["team_id"] == team_id] if subject == team_id else rows[rows["entity_id"] == subject]
     rows = _attacking(rows, is_home(match, team_id))
     n = len(rows)
-    common = dict(id=metric_id("heatmap", subject, start, end), name="heatmap", subject=subject,
+    common = dict(id=metric_id("heatmap", subject, start, end, **({"grid": f"{grid[0]}x{grid[1]}"} if tuple(grid) != (21, 14) else {})), name="heatmap", subject=subject,
                   window=(start, end), unit="samples", evidence_frames=(int(start), int(end) - 1))
     if n == 0:
         return Metric(**common, value=None, data={"cells": list(grid)},

@@ -22,7 +22,7 @@ def pass_network(match: Match, team_id: str, start: float = 0, end: float = 5400
     }
     edges = sorted(([a, b, n] for (a, b), n in pairs.items() if n >= min_passes), key=lambda e: (-e[2], e[0], e[1]))
     return Metric(
-        id=metric_id("pass_network", team_id, start, end),
+        id=metric_id("pass_network", team_id, start, end, **({"min_passes": min_passes} if min_passes != 3 else {})),
         name="pass_network",
         subject=team_id,
         window=(start, end),

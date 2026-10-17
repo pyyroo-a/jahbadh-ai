@@ -13,6 +13,11 @@ from jahbadh.schemas import Event, EventType, Match, Metric
 NOT_TOUCHES = {EventType.SUBSTITUTION, EventType.CARD, EventType.KICKOFF, EventType.PERIOD_END, EventType.GOAL,
                EventType.FORMATION_CHANGE, EventType.TACTIC_CHANGE}
 ASSIST_WINDOW_S = 15.0
+
+
+def _keeps_chain(e: Event) -> bool:
+    """Opponent events that don't touch the ball: pressure, and tackles that didn't win it."""
+    return e.type in NOT_TOUCHES or e.type == EventType.PRESSURE or (e.type == EventType.TACKLE and not e.outcome)
 PROGRESSIVE_M = 10.0
 
 
@@ -29,7 +34,7 @@ def _assister(match: Match, shot: Event) -> Event | None:
     for e in reversed(match.events[:idx]):
         if shot.t - e.t > ASSIST_WINDOW_S:
             return None
-        if e.team_id != shot.team_id and e.type not in NOT_TOUCHES:
+        if e.team_id != shot.team_id and not _keeps_chain(e):
             return None  # the opponent got involved
         if e.team_id == shot.team_id and e.type == EventType.PASS and e.outcome:
             return e if e.related_player_id == shot.player_id else None
@@ -95,6 +100,7 @@ def player_rankings(match: Match, team_id: str | None = None, start: float = 0, 
     tr = match.tracking
     rows = tr[(tr["t"] >= start) & (tr["t"] < end) & (tr["entity_id"] != "BALL")]
     if team_id is not None:
+        match.team(team_id)  # unknown team -> KeyError, not an empty ranking
         rows = rows[rows["team_id"] == team_id]
     impacts = [player_impact(match, pid, start, end) for pid in sorted(rows["entity_id"].unique())]
 
