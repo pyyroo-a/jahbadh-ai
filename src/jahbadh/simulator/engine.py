@@ -34,6 +34,7 @@ PASS_DISTANCE_SCALE = 20.0
 INTERCEPT_SHARE = 0.70
 PRESSURE_RADIUS = 2.5
 PRESSURE_BASE, PRESSURE_PRESS = 0.25, 0.40
+PRESS_ZONE_AX = 63.0     # pressing zone: the ball carrier's own defensive 60% (matches the PPDA zone)
 TACKLE_PROB, TACKLE_WIN = 0.06, 0.5
 FOUL_PROB, CARD_PROB = 0.02, 0.12
 GK_CATCH_SHARE = 0.6
@@ -111,6 +112,12 @@ class _Engine:
             d[0] = np.inf
         i = int(np.argmin(d))
         return i, float(d[i])
+
+    def press_intensity(self, defending_team_id: str) -> float:
+        """How hard the defending team presses here: scaled by press height inside its pressing zone, 1 elsewhere."""
+        if self.ax(self.opp(defending_team_id), self.s.ball[0]) >= PRESS_ZONE_AX:
+            return 1.0
+        return self.states[defending_team_id].tactics.press_height / 0.5  # 0.5 is neutral
 
     def give_ball(self, team_id: str, idx: int) -> None:
         self.s.possession, self.s.carrier = team_id, idx
@@ -240,14 +247,15 @@ class _Engine:
         if not self.s.pressured_logged and self.rng.random() < PRESSURE_BASE + PRESSURE_PRESS * tactics.press_height:
             self.emit(t, dfn, def_pid, EventType.PRESSURE, bx, by, related_player_id=self.carrier_id())
             self.s.pressured_logged = True
-        if self.rng.random() < TACKLE_PROB:
+        intensity = self.press_intensity(dfn)
+        if self.rng.random() < TACKLE_PROB * intensity:
             won = bool(self.rng.random() < TACKLE_WIN)
             self.emit(t, dfn, def_pid, EventType.TACKLE, bx, by, outcome=won,
                       related_player_id=self.carrier_id())
             if won:
                 self.give_ball(dfn, def_idx)
             return
-        if self.rng.random() < FOUL_PROB:
+        if self.rng.random() < FOUL_PROB * intensity:
             self.emit(t, dfn, def_pid, EventType.FOUL, bx, by, related_player_id=self.carrier_id())
             if def_pid not in self.s.booked and self.rng.random() < CARD_PROB:
                 self.s.booked.add(def_pid)
