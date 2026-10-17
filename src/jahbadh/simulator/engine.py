@@ -16,6 +16,7 @@ from jahbadh.pitch import LENGTH, WIDTH, attack_x, clamp, third
 from jahbadh.schemas import Event, EventType, Match, MatchMeta, ScriptedChange, Team
 from jahbadh.simulator.formations import slots_for
 from jahbadh.simulator.movement import TeamState, step_positions
+from jahbadh.simulator.storyline import apply_due_changes
 from jahbadh.simulator.teams import DEFAULT_TEAMS, TeamSpec, make_team
 from jahbadh.simulator.xg import shot_xg
 
@@ -253,7 +254,18 @@ class _Engine:
             self.dead_ball(att, "nearest", PAUSE_FOUL)
 
     # ---- main loop ---------------------------------------------------------
+    def apply_storyline(self, t: int) -> None:
+        if not any(c.minute * 60 == t for c in self.storyline):
+            return
+        carrier = self.carrier_id()
+        apply_due_changes(t, self.storyline, self.states, self.teams, self.emit)
+        if carrier is not None:
+            on_pitch = self.states[self.s.possession].on_pitch
+            # carrier keeps the ball after a reshuffle; a subbed-off carrier hands it to his replacement
+            self.s.carrier = on_pitch.index(carrier) if carrier in on_pitch else self.s.carrier
+
     def tick(self, t: int) -> None:
+        self.apply_storyline(t)
         if t == 0:
             self.kickoff(t, self.home_id)
         elif t == HALF_SECONDS:
