@@ -3,7 +3,7 @@
 Usage: python scripts/preview_match.py data/generated/match-042 --out previews/
 
 Writes heatmap_RMU_before.png / heatmap_RMU_after.png (Rivermouth before and
-after their 60' switch), shape_RMU.png (average positions before vs after)
+after their switch on the hour), shape_RMU.png (average positions before vs after)
 and momentum.png (who was on top, minute by minute, with goals marked).
 """
 
@@ -97,7 +97,8 @@ def save_momentum(match: Match, path: Path) -> None:
         moments.setdefault(c.minute, []).append(f"{c.team_id} {c.kind.replace('_', ' ')}")
     for minute, labels in moments.items():
         ax.axvline(minute, color="black", ls=":", lw=1)
-        ax.text(minute, -0.52, " + ".join(labels), rotation=90, fontsize=7, ha="right", va="bottom")
+        ax.text(minute, -0.52, f"{minute + 1}' " + " + ".join(labels), rotation=90, fontsize=7, ha="right",
+                va="bottom")  # broadcast minute, same as Event.minute
     ax.set_ylim(-0.55, 0.55)
     ax.set_xlim(0, 90)
     ax.set_xlabel("minute")

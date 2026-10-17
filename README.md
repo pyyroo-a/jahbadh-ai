@@ -13,7 +13,7 @@ Jahbadh is my entry for the Microsoft x Premier League *Inside the Game* develop
 **A synthetic match simulator.** It plays a full 90-minute match one second at a time, with fictional teams and players (no real clubs or players anywhere). Every match gives you:
 - about 1,500 events: passes, shots with xG, tackles, interceptions, pressure, fouls, cards, subs, goals
 - 1 Hz tracking data for all 22 players and the ball (about 124,000 rows)
-- scripted tactical moments for demos, like a formation switch at 60'
+- scripted tactical moments for demos, like a formation switch on the hour (61' on the match clock)
 - realistic numbers, checked by tests: about 850 passes at 79%, 30 shots, 3 xG, PPDA in real-world ranges
 - reproducibility: same seed, same match, every time
 
@@ -39,7 +39,7 @@ Generate the demo match (seed 42 with the scripted storyline):
 .venv\Scripts\python -m jahbadh.simulator --seed 42 --demo-storyline
 ```
 
-Draw preview charts for it (heatmaps before and after the 60' switch, average positions and momentum):
+Draw preview charts for it (heatmaps before and after the formation switch, average positions and momentum):
 
 ```bash
 .venv\Scripts\python scripts\preview_match.py data\generated\match-042 --out previews

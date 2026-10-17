@@ -73,10 +73,15 @@ class Event(BaseModel):
 
     @property
     def minute(self) -> int:
+        """Broadcast minute, 1-based like a TV clock: t = 0..59.9 s is 1', and 60:00 shows as 61'.
+        This is the minute agents and the UI should quote."""
         return int(self.t // 60) + 1
 
 
 class ScriptedChange(BaseModel):
+    """A scripted tactical moment. `minute` is elapsed whole minutes: the change happens at
+    minute*60 seconds (mm:00), so minute=60 produces events whose broadcast minute is 61'."""
+
     minute: int
     team_id: str
     kind: Literal["formation", "press_height", "substitution"]

@@ -29,14 +29,16 @@ DEFAULT_TEAMS: tuple[TeamSpec, TeamSpec] = (
 
 
 def make_team(team_id: str, name: str, formation: str, tactics: TeamTactics,
-              rng: np.random.Generator) -> Team:
+              rng: np.random.Generator, taken: set[str] | None = None) -> Team:
+    """`taken` holds names already used in this match; new names are added to it, so no two players share one."""
+    taken = set() if taken is None else taken
     roles = [r for r, _, _ in slots_for(formation)] + BENCH_ROLES
     shirts = [1] + [int(s) for s in rng.choice(np.arange(2, 100), size=len(roles) - 1, replace=False)]
     players = [
         Player(
             id=f"{team_id}-{shirt}",
             team_id=team_id,
-            name=f"{FIRST_NAMES[rng.integers(len(FIRST_NAMES))]} {LAST_NAMES[rng.integers(len(LAST_NAMES))]}",
+            name=_unique_name(rng, taken),
             shirt=shirt,
             role=role,
             starter=i < 11,
@@ -44,3 +46,17 @@ def make_team(team_id: str, name: str, formation: str, tactics: TeamTactics,
         for i, (role, shirt) in enumerate(zip(roles, shirts))
     ]
     return Team(id=team_id, name=name, formation=formation, tactics=tactics, players=players)
+
+
+def make_teams(home_spec: TeamSpec, away_spec: TeamSpec, rng: np.random.Generator) -> tuple[Team, Team]:
+    """Both teams for one match, with every player name unique across the two squads."""
+    taken: set[str] = set()
+    return make_team(*home_spec, rng=rng, taken=taken), make_team(*away_spec, rng=rng, taken=taken)
+
+
+def _unique_name(rng: np.random.Generator, taken: set[str]) -> str:
+    while True:  # 900 combinations for 32 players, so this almost never loops
+        name = f"{FIRST_NAMES[rng.integers(len(FIRST_NAMES))]} {LAST_NAMES[rng.integers(len(LAST_NAMES))]}"
+        if name not in taken:
+            taken.add(name)
+            return name

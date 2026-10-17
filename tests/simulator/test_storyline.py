@@ -90,6 +90,16 @@ def test_switch_keeps_defenders_at_the_back(switched):
     assert not any(roles[p] in ("CB", "FB") for p in front)
 
 
+def test_minute_conventions_agree(demo):
+    # ScriptedChange.minute = elapsed whole minutes (the change happens at mm:00 on the clock).
+    # Event.minute = broadcast minute, 1-based like a TV clock, so 60:00 shows as 61'.
+    # Agents and the UI must quote Event.minute; this pins the relationship so they can never disagree.
+    for change in DEMO_STORYLINE:
+        events = [e for e in demo.events if e.t == change.minute * 60 and e.team_id == change.team_id
+                  and e.type in (EventType.SUBSTITUTION, EventType.FORMATION_CHANGE, EventType.TACTIC_CHANGE)]
+        assert events and all(e.minute == change.minute + 1 for e in events)
+
+
 def test_bad_substitution_raises():
     with pytest.raises(ValueError):
         simulate_match(42, storyline=[ScriptedChange(minute=10, team_id="RMU", kind="substitution",

@@ -17,7 +17,7 @@ from jahbadh.schemas import Event, EventType, Match, MatchMeta, ScriptedChange, 
 from jahbadh.simulator.formations import slots_for
 from jahbadh.simulator.movement import TeamState, step_positions
 from jahbadh.simulator.storyline import apply_due_changes
-from jahbadh.simulator.teams import DEFAULT_TEAMS, TeamSpec, make_team
+from jahbadh.simulator.teams import DEFAULT_TEAMS, TeamSpec, make_teams
 from jahbadh.simulator.xg import shot_xg
 
 MATCH_SECONDS = 5400
@@ -62,8 +62,7 @@ class _Engine:
         self.seed, self.match_id, self.storyline = seed, match_id, storyline
         self.teams: dict[str, Team] = {}
         self.states: dict[str, TeamState] = {}
-        for spec, is_home in ((home_spec, True), (away_spec, False)):
-            team = make_team(*spec, rng=self.rng)
+        for team, is_home in zip(make_teams(home_spec, away_spec, self.rng), (True, False)):
             self.teams[team.id] = team
             self.states[team.id] = self._initial_state(team, is_home)
         self.home_id, self.away_id = home_spec[0], away_spec[0]
