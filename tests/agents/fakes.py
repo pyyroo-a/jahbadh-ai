@@ -87,6 +87,20 @@ class ScriptedChatClient(FunctionInvocationLayer, BaseChatClient):
         return ChatResponse(messages=[Message(role="assistant", contents=[text])])
 
 
+def full_time_moment():
+    from jahbadh.agents.moments import detect_moments
+    return detect_moments(demo_match())[-1]
+
+
+def run_for(script: dict, moment=None, **desk_kw):
+    """A MomentRun on the demo match with a scripted client; the 61' switch unless a moment is given."""
+    from jahbadh.agents.desk import Desk
+    from jahbadh.agents.moments import detect_moments
+    m = demo_match()
+    moment = moment or next(x for x in detect_moments(m) if x.kind == "formation_change")
+    return Desk(client=ScriptedChatClient(script), match=m, **desk_kw).start(moment)
+
+
 def responses_api_body(text: str) -> dict:
     """A minimal completed Responses API reply, for tests that fake the HTTP layer."""
     return {
