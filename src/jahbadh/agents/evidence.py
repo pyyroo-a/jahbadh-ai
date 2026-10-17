@@ -105,6 +105,9 @@ def _hot_zones(metric: Metric) -> list[list]:
 def _extra(metric: Metric) -> dict | None:
     if metric.name == "heatmap" and "grid" in metric.data:
         return {"hot_zones": _hot_zones(metric)}
+    if metric.name == "shot_map":
+        return {"shots": [[int(i), s["minute"], s["player_id"], round(s["xg"], 2), s["goal"], s["inside_box"]]
+                          for i, s in metric.data["shots"].items()]}
     if metric.name == "pass_network":
         return {"top_edges": metric.data.get("edges", [])[:5]}
     if metric.name == "average_positions":

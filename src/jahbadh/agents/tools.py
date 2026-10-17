@@ -25,7 +25,7 @@ ChangeMetric = Literal["xg", "field_tilt", "ppda", "midfield_control", "zone_ove
                        "width", "player_impact"]
 RankBy = Literal["value", "progressive_passes", "ball_wins", "final_third_entries", "xa", "xg", "pressures"]
 
-ANALYST_TOOLS = ("list_events", "get_xg", "get_momentum", "get_player_impact", "rank_players")
+ANALYST_TOOLS = ("list_events", "get_xg", "get_momentum", "get_match_stats", "get_player_impact", "rank_players")
 
 
 def _safe(fn: Callable[..., str]) -> Callable[..., str]:
@@ -142,6 +142,26 @@ def make_tools(match: Match, store: EvidenceStore, horizon: float) -> dict[str, 
         return out(keep(an.before_after(fn, match, subject_id, at_t, window_s)))
 
     @_safe
+    def get_match_stats(team_id: str, period: Literal["first_half", "second_half", "match"] = "match") -> str:
+        """A team's match stats for the first half (0 to 45), second half (45 to 90) or whole match: shots,
+        shots inside and outside the penalty box, goals, xG, fouls committed, yellow cards, passes and pass
+        completion."""
+        start, end = {"first_half": (0, 45), "second_half": (45, 90), "match": (0, 90)}[period]
+        return out(keep(an.match_stats(match, team_id, *window(start, end))))
+
+    @_safe
+    def get_shot_map(team_id: str, from_minute: float = 0, to_minute: float = 90) -> str:
+        """Every shot by a team: id, broadcast minute, shooter, xG, goal or not, and inside the penalty box or
+        not. Cite one shot's xG with field "shots.<id>.xg"."""
+        return out(keep(an.shot_map(match, team_id, *window(from_minute, to_minute))))
+
+    @_safe
+    def get_attacking_sides(team_id: str, from_minute: float = 0, to_minute: float = 90) -> str:
+        """Where a team's attacks went: shares of successful passes and carries into the final third that ended
+        on the left, centre or right (from that team's point of view); side is the busiest lane."""
+        return out(keep(an.attacking_sides(match, team_id, *window(from_minute, to_minute))))
+
+    @_safe
     def get_player_impact(player_id: str, from_minute: float = 0, to_minute: float = 90) -> str:
         """One player's contribution: value is expected goal involvement (xG + xA); fields also hold touches,
         passes, pass completion, progressive passes, final-third entries, shots, goals, assists, ball wins,
@@ -159,10 +179,11 @@ def make_tools(match: Match, store: EvidenceStore, horizon: float) -> dict[str, 
 
     tools = [list_events, get_xg, get_momentum, get_field_tilt, get_ppda, get_shape, get_heatmap,
              get_average_positions, get_zone_overloads, get_pass_network, get_midfield_control,
-             compare_before_after, get_player_impact, rank_players]
+             compare_before_after, get_match_stats, get_shot_map, get_attacking_sides, get_player_impact, rank_players]
     return {fn.__name__: fn for fn in tools}
 
 
 TACTICAL_TOOLS = ("list_events", "get_xg", "get_momentum", "get_field_tilt", "get_ppda", "get_shape", "get_heatmap",
                   "get_average_positions", "get_zone_overloads", "get_pass_network", "get_midfield_control",
-                  "compare_before_after", "get_player_impact", "rank_players")
+                  "compare_before_after", "get_match_stats", "get_shot_map", "get_attacking_sides", "get_player_impact",
+                  "rank_players")

@@ -23,6 +23,7 @@ Jahbadh is my entry for the Microsoft x Premier League *Inside the Game* develop
 - zone overloads, pass networks, midfield control
 - player impact (expected goal involvement, progressive passes, ball wins and more) with rankings
 - before/after comparisons around any moment
+- match stats for each half and the whole match (shots inside and outside the box, goals, xG, fouls, cards, passes), shot maps and attacking sides
 
 **A multi-agent match desk.** Built on Microsoft Agent Framework and a `gpt-5-mini` deployment on Microsoft Foundry. For every key moment (goals, big chances, cards, tactical changes, momentum swings, check-ins, full time and player spotlights) a workflow runs:
 - an **Analyst** and a **Tactical** agent that call the analytics library as tools and only see the match up to that moment

@@ -75,3 +75,17 @@ def test_every_tool_converts_to_a_function_schema():
         spec = tool(fn).to_json_schema_spec()
         assert spec["function"]["name"] == name and fn.__doc__
     assert set(ANALYST_TOOLS) <= set(tools) and set(TACTICAL_TOOLS) == set(tools)
+
+
+def test_match_stats_by_half_respects_the_horizon():
+    _, _, tools = tools_for(horizon=3000.0)
+    assert json.loads(tools["get_match_stats"]("RMU", "second_half"))["window"] == "46'-50'"
+    assert json.loads(tools["get_match_stats"]("RMU", "first_half"))["window"] == "1'-45'"
+    assert "error" in json.loads(tools_for(horizon=2000.0)[2]["get_match_stats"]("RMU", "second_half"))
+
+
+def test_shot_map_summary_lists_every_shot():
+    _, _, tools = tools_for()
+    out = json.loads(tools["get_shot_map"]("RMU", 0, 90))
+    assert len(out["extra"]["shots"]) == out["fields"]["value"]
+    assert {"get_match_stats"} <= set(ANALYST_TOOLS) and {"get_shot_map", "get_attacking_sides"} <= set(TACTICAL_TOOLS)
