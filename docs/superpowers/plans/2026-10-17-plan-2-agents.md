@@ -1195,6 +1195,95 @@ Body: `Spotlights pick the standout players from the impact rankings (involvemen
 
 ---
 
+### Task 14: Match stats, shot map and attacking sides (added 17 Oct)
+
+Added after Task 11 at the user's request. Everything here is computed from data the simulator already records: shot positions, fouls and cards. Blocked, saved and off-target shots and corners are **out of scope**. They would need a simulator change, and any change to how the simulator draws random numbers reshuffles every seeded match, the demo match included. They stay optional, next to Task 17.
+
+Measured on the demo match before writing this: 30 shots (12 inside the box), 11 in the first half and 19 in the second, 27 fouls and 5 yellow cards. `FOUL` and `CARD` events carry the team that committed them.
+
+**Files:**
+- Create: `src/jahbadh/analytics/stats.py`; modify `src/jahbadh/analytics/__init__.py` (export the three functions)
+- Modify: `src/jahbadh/agents/tools.py` (three tools), `src/jahbadh/agents/evidence.py` (`extra` for `shot_map`)
+- Test: `tests/analytics/test_stats.py`, `tests/agents/test_tools.py`
+
+**Interfaces:**
+- Produces (in `jahbadh.analytics.stats`), all calling `check_window` first:
+  - `BOX_DEPTH = 16.5`, `BOX_HALF_WIDTH = 20.16`; `in_box(ax: float, y: float) -> bool` is `ax >= 105 - 16.5` and `abs(y - 34) <= 20.16` (`ax` from `attack_x`).
+  - `match_stats(match, team_id, start=0, end=5400) -> Metric`: name `match_stats`, unit `shots`, value = shots. `data` = `shots`, `shots_inside_box`, `shots_outside_box`, `goals` (scored shots), `xg`, `fouls` (committed), `yellow_cards`, `passes`, `pass_completion` (None with no passes). Evidence: the team's shots, fouls and cards in the window.
+  - `shot_map(match, team_id, start=0, end=5400) -> Metric`: name `shot_map`, unit `shots`, value = shots. `data["shots"]` is a dict keyed by `str(event id)` of `{"minute", "player_id", "x", "y", "xg", "goal", "inside_box"}`, with x/y in the team's attacking frame (x toward 105, high y = left). Keyed by id so a figure can cite `shots.212.xg`. Evidence: the shots.
+  - `attacking_sides(match, team_id, start=0, end=5400) -> Metric`: successful passes and carries by the team that **end** in its final third, split by lane of the end point (`lane()` from `jahbadh.pitch`, attacking point of view). `data = {"left", "centre", "right"}` as shares, plus `"entries"` (count) and `"side"` (the top lane, ties alphabetical); value = the top lane's share. No entries gives `value=None` and a note. Evidence: those passes and carries.
+- Produces (in `jahbadh.agents.tools`): `get_match_stats(team_id, period: Literal["first_half", "second_half", "match"] = "match")` (first half is 0 to 45, second 45 to 90, both clamped to the horizon), `get_shot_map(team_id, from_minute=0, to_minute=90)`, `get_attacking_sides(team_id, from_minute=0, to_minute=90)`. `get_match_stats` joins `ANALYST_TOOLS`; all three join `TACTICAL_TOOLS`. Docstrings say fouls are fouls committed, and that "inside the box" means the penalty area.
+- `summarize` gives `shot_map` an `extra` of `{"shots": [[id, minute, player name or id, xg, goal, inside_box], ...]}` so agents see every shot compactly; the full dict stays in `data` for `resolve`.
+
+- [ ] **Step 1: Write the failing tests**
+
+```python
+# tests/analytics/test_stats.py
+def test_match_stats_counts():
+    evs = [shot_by(1, "NBR", "NBR-9", 0.4, t=100, goal=True),          # x=95: inside the box for home
+           shot_by(2, "NBR", "NBR-9", 0.05, t=200),
+           Event(id=3, t=300, period=1, team_id="NBR", player_id="NBR-4", type=EventType.FOUL, x=50, y=34),
+           Event(id=4, t=301, period=1, team_id="NBR", player_id="NBR-4", type=EventType.CARD, x=50, y=34, detail={"colour": "yellow"}),
+           p(5, "NBR", 50), p(6, "RMU", 50)]
+    evs[1] = evs[1].model_copy(update={"x": 75.0})                       # 30 m out
+    r = match_stats(make_match(evs), "NBR")
+    assert r.value == 2 and r.data["shots_inside_box"] == 1 and r.data["shots_outside_box"] == 1
+    assert r.data["goals"] == 1 and r.data["xg"] == pytest.approx(0.45)
+    assert r.data["fouls"] == 1 and r.data["yellow_cards"] == 1 and r.data["passes"] == 1
+    assert r.evidence_event_ids == [1, 2, 3, 4]
+
+def test_shot_map_uses_the_attacking_frame_and_ids():
+    m = make_match([shot_by(7, "RMU", "RMU-9", 0.3, t=100)])            # away shot at x=10 is 95 in its own frame
+    r = shot_map(m, "RMU")
+    assert r.data["shots"]["7"]["x"] == pytest.approx(95.0) and r.data["shots"]["7"]["inside_box"] is True
+    assert resolve(r, "shots.7.xg") == pytest.approx(0.3)
+
+def test_attacking_sides_shares():
+    evs = [pass_xy(1, "NBR", "NBR-4", (60, 34), (80, 60)), pass_xy(2, "NBR", "NBR-4", (60, 34), (80, 60)),
+           pass_xy(3, "NBR", "NBR-4", (60, 34), (80, 10)), pass_xy(4, "NBR", "NBR-4", (80, 34), (90, 34))]  # ends in the final third, so it counts too
+    r = attacking_sides(make_match(evs), "NBR")
+    assert r.data["entries"] == 4 and r.data["side"] == "left" and r.value == pytest.approx(0.5)
+    assert attacking_sides(make_match([]), "NBR").value is None
+
+def test_demo_match_totals(sim_match_demo):
+    stats = [match_stats(sim_match_demo, t) for t in ("NBR", "RMU")]
+    assert sum(s.value for s in stats) == 30 and sum(s.data["shots_inside_box"] for s in stats) == 12
+    halves = [match_stats(sim_match_demo, t, 0, 2700).value + match_stats(sim_match_demo, t, 2700, 5400).value for t in ("NBR", "RMU")]
+    assert sum(halves) == 30
+
+def test_stats_reject_bad_windows(sim_match):
+    for fn in (match_stats, shot_map, attacking_sides):
+        with pytest.raises(ValueError, match="window"):
+            fn(sim_match, "NBR", 600, 300)
+```
+
+(`attacking_sides` counts every successful pass or carry that **ends** in the final third, wherever it started. That matches "where did their attacks go".)
+
+```python
+# tests/agents/test_tools.py (additions)
+def test_match_stats_by_half_respects_the_horizon():
+    _, _, tools = tools_for(horizon=3000.0)
+    assert json.loads(tools["get_match_stats"]("RMU", "second_half"))["window"] == "46'-50'"
+    assert json.loads(tools["get_match_stats"]("RMU", "first_half"))["window"] == "1'-45'"
+
+def test_shot_map_summary_lists_every_shot():
+    _, _, tools = tools_for()
+    out = json.loads(tools["get_shot_map"]("RMU", 0, 90))
+    assert len(out["extra"]["shots"]) == out["fields"]["value"]
+    assert {"get_match_stats"} <= set(ANALYST_TOOLS) and {"get_shot_map", "get_attacking_sides"} <= set(TACTICAL_TOOLS)
+```
+
+- [ ] **Step 2: Run, expect FAIL**
+- [ ] **Step 3: Implement `stats.py`, the exports, the three tools and the `shot_map` extra**
+- [ ] **Step 4: Run the full suite, expect PASS** (`.venv/Scripts/python -m pytest -q`)
+- [ ] **Step 5: Pause for the user's commit**
+
+Files: `src/jahbadh/analytics/stats.py`, `src/jahbadh/analytics/__init__.py`, `src/jahbadh/agents/tools.py`, `src/jahbadh/agents/evidence.py`, `tests/analytics/test_stats.py`, `tests/agents/test_tools.py`.
+Title: `feat(analytics): add match stats, shot map and attacking sides`
+Body: `Totals and per-half stats (shots inside and outside the box, goals, xG, fouls, cards, passes), a shot map in each team's attacking frame, and attacking sides. All are agent tools too, so claims like "scored from inside the box" are checkable.`
+
+---
+
 ## After Plan 2
 
 - Update the project memory note with the status and anything that surprised us (prompt changes, rejection patterns, real latency per moment).
