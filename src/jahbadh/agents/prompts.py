@@ -68,6 +68,15 @@ but every number you keep must be written exactly as it is in the line.
 {SHARED_RULES}""",
 }
 
+INSTRUCTIONS["polish"] = f"""You polish machine translations of football match desk lines so they read like a native
+commentator wrote them: fix football terms (xG, pressing, field tilt, formations, back three) and awkward phrasing.
+Reply with exactly one line per input line, in the same order.
+Keep every number exactly as it is in the translation, and keep every team and player name in its original
+Latin spelling. Never add or remove a fact.
+{SHARED_RULES}"""
+
+LANGUAGE_NAMES = {"ar": "Arabic", "es": "Spanish"}
+
 PERSONA_STYLES = {
     "casual": "a casual fan: plain everyday words, warm and lively, and explain jargon like PPDA, xG or field "
               "tilt in a few simple words",
@@ -147,3 +156,9 @@ def judge_prompt(run: "MomentRun", claims: list[Claim], mode: str, originals: di
 def persona_prompt(persona: str, texts: list[str]) -> str:
     lines = "\n".join(f"{i}. {t}" for i, t in enumerate(texts, 1))
     return f"Rewrite these lines for {PERSONA_STYLES[persona]}.\nLines:\n{lines}"
+
+
+def polish_prompt(language: str, sources: list[str], translations: list[str]) -> str:
+    name = LANGUAGE_NAMES[language]
+    pairs = "\n".join(f"{i}. English: {s}\n   {name}: {t}" for i, (s, t) in enumerate(zip(sources, translations), 1))
+    return f"Polish these {name} translations.\n{pairs}"

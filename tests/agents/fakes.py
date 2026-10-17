@@ -87,6 +87,17 @@ class ScriptedChatClient(FunctionInvocationLayer, BaseChatClient):
         return ChatResponse(messages=[Message(role="assistant", contents=[text])])
 
 
+class FakeTranslator:
+    """Stands in for Azure AI Translator: tags each text with the target language, or mangles it on request."""
+
+    def __init__(self, mangle=None):
+        self.mangle, self.calls = mangle, []
+
+    def translate(self, texts, to, keep):
+        self.calls.append((list(texts), to, list(keep)))
+        return [self.mangle(t) if self.mangle else f"[{to}] {t}" for t in texts]
+
+
 def full_time_moment():
     from jahbadh.agents.moments import detect_moments
     return detect_moments(demo_match())[-1]
