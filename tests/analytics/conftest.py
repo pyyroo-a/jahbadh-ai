@@ -68,6 +68,20 @@ def intercept(id: int, team: str, x: float, t: float | None = None) -> Event:
     return _ev(id, team, EventType.INTERCEPTION, x, t, outcome=True)
 
 
+def static_tracking(positions: dict[str, tuple[float, float]], seconds: int) -> pd.DataFrame:
+    """Tracking where each listed player stands still for `seconds` seconds. Team comes from the id prefix."""
+    rows = [(t, pid, pid.split("-")[0], float(x), float(y))
+            for t in range(seconds) for pid, (x, y) in positions.items()]
+    df = pd.DataFrame(rows, columns=TRACKING_COLUMNS)
+    return df.astype({"t": "int64", "x": "float64", "y": "float64"})
+
+
 @pytest.fixture(scope="session")
 def sim_match() -> Match:
     return simulate_match(42, storyline=DEMO_STORYLINE)
+
+
+@pytest.fixture(scope="session")
+def sim_match_demo(sim_match) -> Match:
+    """The demo match (seed 42 with the demo storyline), named for tests that rely on its sub and switch."""
+    return sim_match
