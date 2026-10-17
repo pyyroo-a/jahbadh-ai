@@ -1,0 +1,99 @@
+"""Offline stand-ins for the model and translator, plus shared match helpers for the agent tests.
+
+No conftest.py lives in tests/agents on purpose: the analytics tests do `from conftest import ...`,
+and a second module named conftest on sys.path could shadow theirs. The analytics helpers are
+loaded here by file path instead.
+"""
+
+from __future__ import annotations
+
+import importlib.util
+import json
+from collections.abc import Callable
+from dataclasses import dataclass
+from functools import cache
+from pathlib import Path
+from typing import Any
+
+from agent_framework import BaseChatClient, ChatResponse, Content, FunctionInvocationLayer, Message
+from pydantic import BaseModel
+
+from jahbadh.schemas import Match
+from jahbadh.simulator import simulate_match
+from jahbadh.simulator.storyline import DEMO_STORYLINE
+
+_spec = importlib.util.spec_from_file_location(
+    "analytics_helpers", Path(__file__).resolve().parents[1] / "analytics" / "conftest.py")
+_helpers = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_helpers)
+make_match, p, pr, shot, shot_by = _helpers.make_match, _helpers.p, _helpers.pr, _helpers.shot, _helpers.shot_by
+tackle, intercept, static_tracking, pass_xy = _helpers.tackle, _helpers.intercept, _helpers.static_tracking, _helpers.pass_xy
+
+
+@cache
+def demo_match() -> Match:
+    """Seed 42 with the demo storyline (the 61' switch to a back three). Shared, so never mutate it."""
+    return simulate_match(42, storyline=DEMO_STORYLINE)
+
+
+@dataclass
+class ToolCall:
+    name: str
+    args: dict
+
+
+Reply = str | dict | BaseModel | ToolCall | Callable[[list[Message], dict], Any]
+
+
+class ScriptedChatClient(FunctionInvocationLayer, BaseChatClient):
+    """A chat client that answers from a script instead of a model.
+
+    Each agent's instructions start with "Role: <name>", so replies are scripted per role. A reply can be
+    a tool call (the real Agent Framework loop then runs the tool), a model or dict (sent as JSON text),
+    plain text, or a callable that builds one of those from the messages and options.
+    """
+
+    def __init__(self, script: dict[str, list[Reply]], defaults: dict[str, Reply] | None = None):
+        super().__init__()
+        self.script = {role: list(replies) for role, replies in script.items()}
+        self.defaults = dict(defaults or {})
+        self.calls: list[tuple[str, list[str], dict]] = []
+
+    def _inner_get_response(self, *, messages, stream, options, **kwargs):
+        assert not stream, "the desk never streams"
+        return self._reply(messages, options)
+
+    async def _reply(self, messages, options) -> ChatResponse:
+        role = options["instructions"].splitlines()[0].removeprefix("Role: ").strip()
+        self.calls.append((role, [m.text for m in messages], dict(options)))
+        queue = self.script.get(role, [])
+        if queue:
+            reply = queue.pop(0)
+        elif role in self.defaults:
+            reply = self.defaults[role]
+        else:
+            raise AssertionError(f"no scripted reply left for {role}")
+        while callable(reply) and not isinstance(reply, (BaseModel, ToolCall)):
+            reply = reply(list(messages), dict(options))
+        if isinstance(reply, ToolCall):
+            content = Content.from_function_call(call_id=f"call-{len(self.calls)}", name=reply.name, arguments=reply.args)
+            return ChatResponse(messages=[Message(role="assistant", contents=[content])])
+        if isinstance(reply, BaseModel):
+            text = reply.model_dump_json()
+        elif isinstance(reply, dict):
+            text = json.dumps(reply)
+        else:
+            text = reply
+        return ChatResponse(messages=[Message(role="assistant", contents=[text])])
+
+
+def responses_api_body(text: str) -> dict:
+    """A minimal completed Responses API reply, for tests that fake the HTTP layer."""
+    return {
+        "id": "resp_1", "object": "response", "created_at": 0, "model": "gpt-5-mini", "status": "completed",
+        "output": [{"type": "message", "id": "m1", "role": "assistant", "status": "completed",
+                    "content": [{"type": "output_text", "text": text, "annotations": []}]}],
+        "parallel_tool_calls": True, "tool_choice": "auto", "tools": [],
+        "usage": {"input_tokens": 1, "output_tokens": 1, "total_tokens": 2,
+                  "input_tokens_details": {"cached_tokens": 0}, "output_tokens_details": {"reasoning_tokens": 0}},
+    }

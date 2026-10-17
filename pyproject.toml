@@ -13,6 +13,11 @@ dependencies = [
     "pyarrow>=17",
     "pydantic>=2.7",
     "matplotlib>=3.9",
+    "agent-framework-core>=1.22,<2",
+    "agent-framework-openai>=1.17,<2",
+    "openai>=3.33,<4",
+    "azure-ai-translation-text>=2.0,<3",
+    "python-dotenv>=1.2",
 ]
 
 [project.optional-dependencies]
@@ -23,3 +28,4 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["live: calls real Azure services, opt-in with JAHBADH_LIVE=1"]
