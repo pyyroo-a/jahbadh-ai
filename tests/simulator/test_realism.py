@@ -7,7 +7,7 @@ even for real football, since some real games are wild.
 """
 
 from collections import Counter
-from statistics import mean
+from statistics import correlation, mean
 
 import pytest
 
@@ -58,6 +58,28 @@ def test_average_match_is_typical(summaries, stat):
 def test_every_match_is_plausible(summaries, seed):
     for k, (lo, hi) in PLAUSIBLE_MATCH.items():
         assert lo <= summaries[seed][k] <= hi, f"seed {seed}: {k}={summaries[seed][k]:.2f} not in [{lo}, {hi}]"
+
+
+@pytest.mark.xfail(strict=True, reason=(
+    "Known gap: in the simulator, extra possession comes from safe recycling at the back, so it "
+    "goes with LESS territory (r ~ -0.43). Fix needs shared progression intent plus near-goal "
+    "defensive compactness; parked as an optional realism task. strict=True flags it once fixed."))
+def test_possession_goes_with_territory_and_chances():
+    # In real football the team with more of the ball usually also has more territory and,
+    # less tightly, more of the chances. Checked over 10 seeds x 2 teams.
+    from jahbadh.analytics import field_tilt, xg_total
+
+    poss, tilt, xg_share = [], [], []
+    for seed in SEEDS:
+        m = simulate_match(seed)
+        done = Counter(e.team_id for e in m.events_of(EventType.PASS) if e.outcome)
+        xg = {t: xg_total(m, t).value for t in done}
+        for t, o in ((m.meta.home.id, m.meta.away.id), (m.meta.away.id, m.meta.home.id)):
+            poss.append(done[t] / (done[t] + done[o]))
+            tilt.append(field_tilt(m, t).value)
+            xg_share.append(xg[t] / (xg[t] + xg[o]))
+    assert correlation(poss, tilt) > 0.5, f"possession vs field tilt r={correlation(poss, tilt):.2f}"
+    assert correlation(poss, xg_share) > 0.2, f"possession vs xG share r={correlation(poss, xg_share):.2f}"
 
 
 @pytest.mark.parametrize("seed", list(SEEDS)[:5])

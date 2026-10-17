@@ -692,6 +692,8 @@ def test_before_after_with_dict_metric(sim_match_demo):
 
 *Added 17 Oct from the user's idea: teams that control the midfield usually dominate the game.*
 
+> **Outcome (17 Oct):** shipped as a **descriptive** metric. The dominance check measured r around 0 over 20 seeds (the simulator doesn't model how midfield numbers open forward passing lanes), so the test was dropped and agents must not claim "won the midfield, therefore dominated" unless that match's data shows it. Investigating it exposed a simulator gap: extra possession goes with *less* territory (r = -0.43). That's now a strict expected-failure test in `test_realism.py`, and the fix is parked in optional Task 17.
+
 **Files:**
 - Create: `src/jahbadh/analytics/midfield.py`
 - Modify: `src/jahbadh/analytics/__init__.py` (re-export)
@@ -852,4 +854,14 @@ def test_preview_script_writes_pngs(tmp_path):
 - [ ] **Step 4:** Run `pytest -q`. Expected: all pass. Then run `python -m jahbadh.simulator --seed 42 --demo-storyline` and the preview script, **open the PNGs and show them to the user**. The RMU heatmaps should visibly change after minute 60. If they don't, the demo story isn't there yet, so go back to Task 6 and 12 constants.
 - [ ] **Step 5: Suggest commit:** `feat: add match preview script and README quickstart`.
 
-**Plan 1 is done when:** the full suite passes, the demo match shows a visible tactical shift at 60', midfield control tracks dominance, and the user has committed each task. Then write Plan 2 (agents).
+**Plan 1 is done when:** the full suite passes, the demo match shows a visible tactical shift at 60', the possession-territory gap is documented as an expected failure, and the user has committed each task. Then write Plan 2 (agents).
+
+
+---
+
+### Task 17 (optional, only if time allows after Plan 2): Simulator realism and tactical identities
+
+*Parked 17 Oct by the user's decision. Revisit at the end of Plan 1 or after Plan 2, with the deadline in view.*
+
+- **Possession realism:** add a shared progression intent (`PROGRESSION_BASE`, weighting forward passes for every team, with directness on top) **plus** near-goal defensive compactness, so possession goes with territory without shots coming from too close. Done when the strict xfail `test_possession_goes_with_territory_and_chances` passes (so the marker gets removed) and every realism and pressing test stays green. Measured starting point: `PROGRESSION_BASE=0.5`, `SHOT_BASE=0.052`, `SHOT_XG_MULT=0.05` gives r(possession, tilt) = +0.64 over 20 seeds, but 19.4 shots, 4.0 goals and about 0.18 xG per shot.
+- **Tactical identities** (from the user's question about exciting matches): richer team *instructions* as inputs (attack down a flank, overlapping fullbacks, a striker dropping deep, counter vs possession style). Outcomes emerge and are never scripted, per the data-true rule. Agents explain what happened, including when a plan fails.
