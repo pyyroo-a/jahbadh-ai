@@ -23,20 +23,21 @@ from jahbadh.simulator.xg import shot_xg
 MATCH_SECONDS = 5400
 HALF_SECONDS = 2700
 
-# Starting constants, tuned in Task 7 against top-flight stat ranges.
+# Calibrated against top-flight ranges (tests/simulator/test_realism.py): ~850 passes at ~79%,
+# ~30 shots at ~0.11 xG each, ~3 xG and ~20 fouls per match.
 ACT_BASE, ACT_TEMPO = 0.30, 0.25
 CARRY_PROB = 0.15
-SHOT_ZONE_AX = 80.0
-SHOT_XG_MULT, SHOT_PROB_CAP = 2.0, 0.5
-PASS_BASE, PASS_LENGTH_PEN, PASS_PRESSURE_PEN, PASS_FINAL_THIRD_PEN = 0.93, 0.20, 0.15, 0.08
+SHOT_ZONE_AX = 75.0
+SHOT_BASE, SHOT_XG_MULT, SHOT_PROB_CAP = 0.10, 0.4, 0.25  # base term makes players shoot from range too
+PASS_BASE, PASS_LENGTH_PEN, PASS_PRESSURE_PEN, PASS_FINAL_THIRD_PEN = 0.97, 0.14, 0.05, 0.08
 PASS_DISTANCE_SCALE = 20.0
 INTERCEPT_SHARE = 0.70
 PRESSURE_RADIUS = 2.5
 PRESSURE_BASE, PRESSURE_PRESS = 0.25, 0.40
 TACKLE_PROB, TACKLE_WIN = 0.06, 0.5
-FOUL_PROB, CARD_PROB = 0.012, 0.12
+FOUL_PROB, CARD_PROB = 0.02, 0.12
 GK_CATCH_SHARE = 0.6
-DRIBBLE_MAX = 2.0
+DRIBBLE_MAX = 0.5
 PAUSE_OUT, PAUSE_FOUL, PAUSE_GOAL = (20, 40), (25, 45), 60
 
 
@@ -154,7 +155,7 @@ class _Engine:
 
         if bax > SHOT_ZONE_AX:
             xg = shot_xg(bax, ay, under_pressure=pressured)
-            if self.rng.random() < min(SHOT_PROB_CAP, SHOT_XG_MULT * xg):
+            if self.rng.random() < min(SHOT_PROB_CAP, SHOT_BASE + SHOT_XG_MULT * xg):
                 self.shoot(t, team_id, pid, xg)
                 return
 
