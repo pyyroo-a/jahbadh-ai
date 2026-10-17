@@ -11,7 +11,7 @@ def test_components_and_mean():
     r = midfield_control(make_match(evs, tracking=static_tracking(pos, seconds=10)), "NBR")
     assert r.data == {"ball": pytest.approx(0.75), "numbers": pytest.approx(2 / 3), "duels": pytest.approx(0.5)}
     assert r.value == pytest.approx((0.75 + 2 / 3 + 0.5) / 3)
-    assert r.evidence_event_ids == [1, 2, 3, 5]
+    assert r.evidence_event_ids == [1, 2, 3, 4, 5, 6]
 
 
 def test_ignores_actions_outside_middle_third():

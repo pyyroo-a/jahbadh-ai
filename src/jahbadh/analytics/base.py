@@ -2,6 +2,14 @@
 
 from jahbadh.schemas import Match
 
+MATCH_END = 5400.0
+
+
+def check_window(start: float, end: float) -> None:
+    """Refuse windows outside the match: a metric over a bad window would still look plausible."""
+    if not 0 <= start < end <= MATCH_END:
+        raise ValueError(f"window {start}-{end} must satisfy 0 <= start < end <= {MATCH_END:g}")
+
 
 def metric_id(name: str, subject: str, start: float, end: float, **params: object) -> str:
     """Stable id, e.g. "ppda:NBR:0-5400". Pass any non-default parameter that changes the value

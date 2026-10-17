@@ -2,12 +2,13 @@
 
 from collections import Counter, defaultdict
 
-from jahbadh.analytics.base import is_home, metric_id
+from jahbadh.analytics.base import check_window, is_home, metric_id
 from jahbadh.pitch import WIDTH, attack_x
 from jahbadh.schemas import EventType, Match, Metric
 
 
 def pass_network(match: Match, team_id: str, start: float = 0, end: float = 5400, min_passes: int = 3) -> Metric:
+    check_window(start, end)
     home = is_home(match, team_id)
     passes = [e for e in match.events_of(EventType.PASS, team_id=team_id, start=start, end=end)
               if e.outcome and e.player_id and e.related_player_id]

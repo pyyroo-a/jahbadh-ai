@@ -1,6 +1,6 @@
 """Territory and pressing: field tilt and PPDA."""
 
-from jahbadh.analytics.base import is_home, metric_id
+from jahbadh.analytics.base import check_window, is_home, metric_id
 from jahbadh.pitch import attack_x, third
 from jahbadh.schemas import EventType, Match, Metric
 
@@ -10,12 +10,15 @@ DEFENSIVE_ACTIONS = (EventType.TACKLE, EventType.INTERCEPTION, EventType.FOUL)
 
 def field_tilt(match: Match, team_id: str, start: float = 0, end: float = 5400) -> Metric:
     """Team's share of all successful passes that start in the passer's final third."""
+    check_window(start, end)
+    opp = match.opponent_id(team_id)
     final_third = {
         tid: [e for e in match.events_of(EventType.PASS, team_id=tid, start=start, end=end)
               if e.outcome and third(attack_x(e.x, is_home(match, tid))) == "final"]
-        for tid in (team_id, match.opponent_id(team_id))
+        for tid in (team_id, opp)
     }
-    ours, total = final_third[team_id], sum(len(v) for v in final_third.values())
+    ours, theirs = final_third[team_id], final_third[opp]
+    total = len(ours) + len(theirs)
     return Metric(
         id=metric_id("field_tilt", team_id, start, end),
         name="field_tilt",
@@ -23,13 +26,15 @@ def field_tilt(match: Match, team_id: str, start: float = 0, end: float = 5400) 
         window=(start, end),
         value=len(ours) / total if total else None,
         unit="share",
-        evidence_event_ids=[e.id for e in ours],
+        evidence_event_ids=sorted(e.id for e in ours + theirs),
+        data={"team_passes": len(ours), "opponent_passes": len(theirs)},
         note=None if total else "No successful final-third passes by either team in this window.",
     )
 
 
 def ppda(match: Match, defending_team_id: str, start: float = 0, end: float = 5400) -> Metric:
     """Opponent passes in its defensive 60% per defensive action there. Lower means a more intense press."""
+    check_window(start, end)
     opp = match.opponent_id(defending_team_id)
     opp_home = is_home(match, opp)
 
@@ -46,7 +51,7 @@ def ppda(match: Match, defending_team_id: str, start: float = 0, end: float = 54
         window=(start, end),
         value=len(passes) / len(actions) if actions else None,
         unit="passes/def_action",
-        evidence_event_ids=[e.id for e in actions],
+        evidence_event_ids=sorted(e.id for e in actions + passes),
         data={"opponent_passes": len(passes), "defensive_actions": len(actions)},
         note=None if actions else "No defensive actions in the pressing zone in this window.",
     )

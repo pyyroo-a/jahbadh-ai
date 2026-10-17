@@ -6,7 +6,7 @@ story for any position: a holding midfielder with zero xGI can still top
 the ball-wins or progressive-passes rankings.
 """
 
-from jahbadh.analytics.base import is_home, metric_id
+from jahbadh.analytics.base import check_window, is_home, metric_id
 from jahbadh.pitch import attack_x, third
 from jahbadh.schemas import Event, EventType, Match, Metric
 
@@ -42,6 +42,7 @@ def _assister(match: Match, shot: Event) -> Event | None:
 
 
 def player_impact(match: Match, player_id: str, start: float = 0, end: float = 5400) -> Metric:
+    check_window(start, end)
     team_id = _team_of(match, player_id)
     home = is_home(match, team_id)
     window_events = match.events_of(team_id=team_id, start=start, end=end)
@@ -97,6 +98,7 @@ def player_impact(match: Match, player_id: str, start: float = 0, end: float = 5
 
 def player_rankings(match: Match, team_id: str | None = None, start: float = 0, end: float = 5400,
                     by: str = "value", n: int = 3) -> list[Metric]:
+    check_window(start, end)
     tr = match.tracking
     rows = tr[(tr["t"] >= start) & (tr["t"] < end) & (tr["entity_id"] != "BALL")]
     if team_id is not None:

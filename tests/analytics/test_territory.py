@@ -8,7 +8,8 @@ def test_field_tilt_counts_final_third_passes_only():
     # NBR: 3 final-third passes (x=80) + 1 own-half; RMU (away, attacking x=0): 1 final-third pass at x=20
     m = make_match([p(1, "NBR", 80), p(2, "NBR", 80), p(3, "NBR", 80), p(4, "NBR", 30), p(5, "RMU", 20)])
     nbr = field_tilt(m, "NBR")
-    assert nbr.value == pytest.approx(0.75) and nbr.evidence_event_ids == [1, 2, 3]
+    assert nbr.value == pytest.approx(0.75) and nbr.evidence_event_ids == [1, 2, 3, 5]
+    assert nbr.data == {"team_passes": 3, "opponent_passes": 1}
     assert field_tilt(m, "RMU").value == pytest.approx(0.25)
 
 
@@ -20,7 +21,7 @@ def test_ppda_ratio_and_evidence():
     # RMU makes 10 passes in its own defensive 60%; NBR makes 2 defensive actions there
     m = make_match([p(i, "RMU", 90) for i in range(1, 11)] + [tackle(11, "NBR", 85), intercept(12, "NBR", 80)])
     r = ppda(m, "NBR")
-    assert r.value == pytest.approx(5.0) and r.evidence_event_ids == [11, 12]
+    assert r.value == pytest.approx(5.0) and r.evidence_event_ids == list(range(1, 13))
 
 
 def test_ppda_ignores_actions_outside_the_zone():

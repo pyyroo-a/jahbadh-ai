@@ -2,14 +2,14 @@
 
 from typing import Callable
 
-from jahbadh.analytics.base import metric_id
+from jahbadh.analytics.base import MATCH_END, metric_id
 from jahbadh.schemas import Match, Metric
-
-MATCH_END = 5400.0
 
 
 def before_after(fn: Callable[..., Metric | dict[str, Metric]], match: Match, subject: str, at_t: float,
                  window_s: float = 900, value_key: str | None = None) -> Metric:
+    if not (0 < at_t < MATCH_END and window_s > 0):
+        raise ValueError(f"window around {at_t} needs time on both sides inside the match and a positive length")
     b_start, a_end = max(0.0, at_t - window_s), min(MATCH_END, at_t + window_s)
     before, after = fn(match, subject, b_start, at_t), fn(match, subject, at_t, a_end)
     if value_key is not None:

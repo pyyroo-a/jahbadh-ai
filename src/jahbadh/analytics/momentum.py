@@ -9,6 +9,8 @@ FINAL_THIRD_PASS_THREAT = 0.02  # a successful final-third pass counts as 0.02 x
 
 def momentum(match: Match, at_t: float, window_s: float = 600) -> Metric:
     """Home team's share of threat (shot xG + 0.02 per successful final-third pass) in the window ending at at_t."""
+    if not (0 < at_t <= 5400 and window_s > 0):
+        raise ValueError(f"window ending at {at_t} with length {window_s} must end inside the match and be positive")
     start = max(0.0, at_t - window_s)
     threat, evidence = {}, []
     for tid in (match.meta.home.id, match.meta.away.id):

@@ -1,10 +1,11 @@
 """Shot-based metrics: total xG and the cumulative xG timeline."""
 
-from jahbadh.analytics.base import is_home, metric_id
+from jahbadh.analytics.base import check_window, is_home, metric_id
 from jahbadh.schemas import EventType, Match, Metric
 
 
 def xg_total(match: Match, team_id: str, start: float = 0, end: float = 5400) -> Metric:
+    check_window(start, end)
     is_home(match, team_id)  # unknown team -> KeyError, never a confident 0
     shots = match.events_of(EventType.SHOT, team_id=team_id, start=start, end=end)
     return Metric(

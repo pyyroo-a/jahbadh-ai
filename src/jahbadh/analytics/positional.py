@@ -8,7 +8,7 @@ always reads left to right as attacking, whichever side the team is on.
 import numpy as np
 import pandas as pd
 
-from jahbadh.analytics.base import is_home, metric_id
+from jahbadh.analytics.base import check_window, is_home, metric_id
 from jahbadh.pitch import LENGTH, WIDTH
 from jahbadh.schemas import Match, Metric
 
@@ -37,6 +37,7 @@ def _goalkeepers(match: Match, team_id: str) -> set[str]:
 
 def heatmap(match: Match, subject: str, start: float = 0, end: float = 5400,
             grid: tuple[int, int] = (21, 14)) -> Metric:
+    check_window(start, end)
     team_id = _subject_team(match, subject)
     rows = _window(match, start, end)
     rows = rows[rows["team_id"] == team_id] if subject == team_id else rows[rows["entity_id"] == subject]
@@ -53,6 +54,7 @@ def heatmap(match: Match, subject: str, start: float = 0, end: float = 5400,
 
 
 def average_positions(match: Match, team_id: str, start: float = 0, end: float = 5400) -> Metric:
+    check_window(start, end)
     rows = _window(match, start, end)
     rows = _attacking(rows[rows["team_id"] == team_id], is_home(match, team_id))
     means = rows.groupby("entity_id")[["x", "y"]].mean()
@@ -65,6 +67,7 @@ def average_positions(match: Match, team_id: str, start: float = 0, end: float =
 
 def shape(match: Match, team_id: str, start: float = 0, end: float = 5400) -> dict[str, Metric]:
     """Median over seconds of: line height (2nd-deepest outfielder), length and width of the outfield block."""
+    check_window(start, end)
     rows = _window(match, start, end)
     rows = rows[(rows["team_id"] == team_id) & ~rows["entity_id"].isin(_goalkeepers(match, team_id))]
     rows = _attacking(rows, is_home(match, team_id))

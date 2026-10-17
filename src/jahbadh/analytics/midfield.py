@@ -7,7 +7,7 @@ Three shares of the two-team total, each in [0, 1]:
 The value is the plain mean of whichever components have data.
 """
 
-from jahbadh.analytics.base import is_home, metric_id
+from jahbadh.analytics.base import check_window, is_home, metric_id
 from jahbadh.pitch import LENGTH, attack_x, third
 from jahbadh.schemas import EventType, Match, Metric
 
@@ -20,6 +20,7 @@ def _share(ours: float, theirs: float) -> float | None:
 
 
 def midfield_control(match: Match, team_id: str, start: float = 0, end: float = 5400) -> Metric:
+    check_window(start, end)
     opp = match.opponent_id(team_id)
 
     def in_middle(tid: str, x: float) -> bool:
@@ -53,7 +54,7 @@ def midfield_control(match: Match, team_id: str, start: float = 0, end: float = 
         window=(start, end),
         value=sum(present) / len(present) if present else None,
         unit="share",
-        evidence_event_ids=sorted(e.id for e in passes[team_id] + duels[team_id]),
+        evidence_event_ids=sorted(e.id for tid in (team_id, opp) for e in passes[tid] + duels[tid]),
         evidence_frames=(int(start), int(end) - 1),
         data=data,
         note=None if present else "No midfield passes, players or duels in this window.",

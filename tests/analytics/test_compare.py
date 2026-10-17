@@ -1,5 +1,6 @@
 import pytest
 
+from conftest import make_match, p
 from jahbadh.analytics.compare import before_after
 from jahbadh.analytics.positional import shape
 from jahbadh.analytics.territory import field_tilt
@@ -26,6 +27,13 @@ def test_before_after_with_dict_metric(sim_match_demo):
     assert r.value == pytest.approx(r.data["after"]["value"] - r.data["before"]["value"])
 
 
-def test_before_after_none_when_a_side_is_empty(sim_match_demo):
-    r = before_after(field_tilt, sim_match_demo, "NBR", at_t=0)
+def test_before_after_none_when_a_side_is_empty():
+    m = make_match([p(1, "NBR", 80, t=700), p(2, "RMU", 20, t=800)])   # nothing before 600
+    r = before_after(field_tilt, m, "NBR", at_t=600, window_s=300)
     assert r.value is None and r.note
+
+
+def test_before_after_rejects_edges(sim_match_demo):
+    for at_t in (0, 5400):
+        with pytest.raises(ValueError, match="window"):
+            before_after(field_tilt, sim_match_demo, "NBR", at_t=at_t)

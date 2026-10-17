@@ -12,7 +12,7 @@ almost always "overloaded" (centre-backs vs a lone striker), which says nothing.
 import numpy as np
 import pandas as pd
 
-from jahbadh.analytics.base import is_home, metric_id
+from jahbadh.analytics.base import check_window, is_home, metric_id
 from jahbadh.pitch import LENGTH, WIDTH
 from jahbadh.schemas import Match, Metric
 
@@ -28,6 +28,7 @@ def _zones(rows: pd.DataFrame, home: bool) -> pd.Series:
 
 
 def zone_overloads(match: Match, team_id: str, start: float = 0, end: float = 5400, margin: int = 2) -> Metric:
+    check_window(start, end)
     tr = match.tracking
     rows = tr[(tr["t"] >= start) & (tr["t"] < end)]
     opp_id = match.opponent_id(team_id)
