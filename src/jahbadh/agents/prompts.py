@@ -127,7 +127,8 @@ def tactical_prompt(run: "MomentRun", brief: list[Finding]) -> str:
 def evidence_block(run: "MomentRun", metric_ids: list[str], event_ids: list[int]) -> str:
     """The cited metrics as JSON summaries (their "fields" are what figures may cite) and the cited events."""
     metrics = [json.dumps(summarize(run.store.get(m))) for m in dict.fromkeys(metric_ids) if m in run.store]
-    events = [describe_event(run.desk.match, run.desk.match.event(e)) for e in dict.fromkeys(event_ids)]
+    known = {e.id: e for e in run.desk.match.events if e.t < run.moment.horizon}   # never unknown or future events
+    events = [describe_event(run.desk.match, known[e]) for e in dict.fromkeys(event_ids) if e in known]
     return "Metrics:\n" + ("\n".join(metrics) or "(none)") + "\nEvents:\n" + ("\n".join(events) or "(none)")
 
 

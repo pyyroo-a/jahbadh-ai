@@ -51,8 +51,13 @@ class AzureTranslator:
 
 
 def keep_terms(match: Match) -> list[str]:
+    """Names Translator must leave alone and the survival check looks for: full names, plus the short forms
+    commentary actually uses (surnames like "Rasmus", team short names like "Rivermouth")."""
     teams = [match.meta.home, match.meta.away]
-    return [t.name for t in teams] + [t.id for t in teams] + [p.name for t in teams for p in t.players]
+    players = [p for t in teams for p in t.players]
+    terms = ([t.name for t in teams] + [t.id for t in teams] + [p.name for p in players]
+             + [t.name.split()[0] for t in teams] + [p.name.split()[-1] for p in players])
+    return list(dict.fromkeys(terms))
 
 
 ARABIC_LETTER = re.compile(r"[\u0600-\u06FF]")
@@ -66,7 +71,8 @@ def _looks_untranslated(source: str, translated: str, keep: list[str]) -> bool:
             text = text.replace(k, " ")
         return {w.lower() for w in ENGLISH_WORD.findall(text)}
     src = words(source)
-    return bool(src) and len(src & words(translated)) / len(src) >= 0.5
+    # with fewer than 3 content words a shared word like "total" decides it, so don't judge
+    return len(src) >= 3 and len(src & words(translated)) / len(src) >= 0.5
 
 
 def survives(source: str, translated: str, keep: list[str], language: str | None = None) -> list[str]:
@@ -105,7 +111,15 @@ async def localize(run: MomentRun, renders: list[RenderedClaim]) -> tuple[list[R
     for language in languages:
         for persona, group in by_persona.items():
             sources = [r.text for r in group]
-            raw = await asyncio.to_thread(run.desk.translator.translate, sources, language, keep)
+            try:
+                raw = await asyncio.to_thread(run.desk.translator.translate, sources, language, keep)
+            except Exception as e:  # throttling or an outage must not cost the English claims
+                for r in group:
+                    out.append(r.model_copy(update={"language": language, "note": "english fallback"}))
+                    rejections.append(Rejection(claim_id=r.claim_id, text=r.text, layer="localization",
+                                                reasons=[f"translator unavailable: {type(e).__name__}: {e}"],
+                                                attempt=0, persona=persona, language=language))
+                continue
             polished = await _polish(run, language, sources, raw)
             for i, r in enumerate(group):
                 tried = []

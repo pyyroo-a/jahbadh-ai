@@ -123,3 +123,12 @@ def test_workflow_diagram_shows_the_rewrite_loop():
     desk = Desk(client=None, match=demo_match())
     chart = workflow_mermaid(desk)
     assert "referee -. conditional .-> writer" in chart and "referee -. conditional .-> persona" in chart
+
+
+def test_a_broken_rewrite_keeps_the_claims_already_approved():
+    # final review: an unparseable rewrite failed the whole moment and threw away the true claim
+    two = Draft(claims=[good_draft().claims[0], bad_number_draft().claims[0]])
+    item = asyncio.run(run_moment(*scripted_moment(writer_replies=[two, "nope", "still nope"],
+                                                   referee_replies=[all_supported()])))
+    assert [c.id for c in item.claims] == ["full_time-5400:c1"]
+    assert item.stats == {"drafted": 2, "passed_first": 1, "rewritten": 0, "dropped": 1}

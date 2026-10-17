@@ -25,11 +25,11 @@ def number_matches(written: str, value: float | str) -> bool:
     if isinstance(value, str):
         return written.replace(" ", "").lower() == value.replace(" ", "").lower()
     w = normalize_digits(written)
-    found = NUMBER.search(w)
-    if found is None:
+    numbers = NUMBER.findall(w)
+    if len(numbers) != 1:            # "3 of 99" would let the 99 go unchecked
         return False
-    number = float(found.group())
-    decimals = len(found.group().partition(".")[2])
+    number = float(numbers[0])
+    decimals = len(numbers[0].partition(".")[2])
     tolerance = 0.5 * 10 ** -decimals + 1e-9
     target = abs(value) * 100 if "%" in w else abs(value)
     return abs(number - target) <= tolerance

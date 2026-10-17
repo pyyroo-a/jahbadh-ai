@@ -77,3 +77,13 @@ def test_minute_marks_are_not_figures_and_event_figures_bring_their_event():
     run = ft_run({"writer": [Draft(claims=[draft])]})
     [claim] = asyncio.run(write(run, []))
     assert [f.written for f in claim.figures] == ["0.74"] and claim.event_ids == [975]
+
+
+def test_rewrite_prompt_skips_unknown_and_future_events():
+    # final review: an unknown event id crashed the rewrite; a later event leaked the future into the prompt
+    run = run_for({"writer": [Draft(claims=[])]})                     # the 61' switch, horizon 3601
+    late = next(e for e in run.desk.match.events if e.t > 4000)
+    bad = Claim(id="formation_change-3600:c1", text="x", metric_ids=[], event_ids=[999999, late.id, 975], figures=[])
+    asyncio.run(rewrite(run, [(bad, ["nope"])], []))
+    prompt = run.desk.client.calls[0][1][-1]
+    assert f"#{late.id} " not in prompt and "#975 61'" in prompt

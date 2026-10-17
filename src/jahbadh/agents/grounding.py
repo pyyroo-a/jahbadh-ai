@@ -18,6 +18,7 @@ MINUTE_PATTERNS = [re.compile(r"(?<![\d.])(\d{1,2})['’]"),
 DURATION = re.compile(r"\b(\d{1,2}) minutes?\b")
 FORMATION = re.compile(r"\b\d(?:-\d){2,3}\b")
 SCORE = re.compile(r"\b(\d{1,2})-(\d{1,2})\b")
+PERCENT_AFTER = re.compile(r"\s*(?:%|per ?cent\b)", re.IGNORECASE)
 FIELD_NAME = re.compile(r"\b[a-z]+(?:_[a-z]+)+\b")      # e.g. home_threat: written for code, not viewers
 
 
@@ -114,11 +115,14 @@ def check_claim(claim: Claim, match: Match, store: EvidenceStore, horizon: float
         elif found is None:
             reasons.append(f"'{fig.written}' is not in the text")
         else:
+            # the text decides whether a number is a percentage: "3%" or "3 per cent" with written "3" is one too
+            percent = "%" in fig.written or bool(PERCENT_AFTER.match(text, found.end()))
+            as_written = fig.written + "%" if percent and "%" not in fig.written else fig.written
             if value is None:
                 reasons.append(f"{fig.metric_id} has no field {fig.field}")
-            elif "%" in fig.written and not share:
+            elif percent and not share:
                 reasons.append(f"'{fig.written}' is a percentage but {fig.metric_id} {fig.field} is not a share")
-            elif not number_matches(fig.written, value):
+            elif not number_matches(as_written, value):
                 shown = f"{value:.3f}" if isinstance(value, float) else value
                 reasons.append(f"'{fig.written}' does not match {fig.metric_id} {fig.field} = {shown}")
         if found is not None:

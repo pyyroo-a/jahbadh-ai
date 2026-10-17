@@ -20,6 +20,7 @@ from jahbadh.agents.analysts import analyse, explain
 from jahbadh.agents.contracts import (Claim, DeskRun, FeedItem, Finding, Moment, MomentFailure, Rejection,
                                       RenderedClaim)
 from jahbadh.agents.desk import Desk, MomentRun
+from jahbadh.agents.llm import AgentOutputError
 from jahbadh.agents.localize import localize
 from jahbadh.agents.persona import render_personas
 from jahbadh.agents.referee import referee
@@ -62,7 +63,10 @@ class WriterStep(_Step):
     async def handle(self, state: MomentState, ctx: WorkflowContext[MomentState]) -> None:
         stats = dict(state.stats)
         if state.retry:
-            claims = await rewrite(self.run, state.retry, state.findings)
+            try:
+                claims = await rewrite(self.run, state.retry, state.findings)
+            except AgentOutputError:
+                claims = []         # a broken rewrite drops the retries, never the claims already approved
             stats["rewritten"] += len(claims)
             stats["dropped"] += len(state.retry) - len(claims)     # claims the writer gave up on
             update = {"pending": claims, "retry": [], "attempt": 1}

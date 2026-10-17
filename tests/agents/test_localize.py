@@ -141,3 +141,23 @@ def test_azure_translator_keeps_numbers_as_digits(monkeypatch):
     tr.translate(["He had 1 ball win, 5 goals and 79% completion."], "ar", [])
     assert sent[0].text == ('He had <span class="notranslate">1</span> ball win, <span class="notranslate">5</span> '
                             'goals and <span class="notranslate">79%</span> completion.')
+
+
+def test_a_translator_outage_keeps_english_and_logs_it():
+    # final review: F0 throttling raised out of localize and failed the moment, English claims included
+    def down(text):
+        raise RuntimeError("429 too many requests")
+    run, good = grounded_claim(languages=("en", "ar"), translator=FakeTranslator(mangle=down))
+    renders, rejected = asyncio.run(localize(run, [en(good)]))
+    assert [(r.language, r.text, r.note) for r in renders] == [("ar", good.text, "english fallback")]
+    assert rejected[0].reasons == ["translator unavailable: RuntimeError: 429 too many requests"]
+    assert run.desk.client.calls == []                                   # no polish call for nothing
+
+
+def test_short_names_are_protected_and_checked():
+    # final review: commentary says "Rasmus" and "Rivermouth", which were neither protected nor checked
+    m = demo_match()
+    terms = keep_terms(m)
+    assert {"Rasmus", "Rivermouth", "Northbridge"} <= set(terms)
+    assert survives("Rasmus had 1.13 xG in total.", "Rasmus tuvo 1,13 xG en total.", terms, "es") == []
+    assert "name 'Rasmus' missing" in survives("Rasmus scored 1.13 xG.", "\u0631\u0627\u0633\u0645\u0648\u0633 1.13 xG", terms, "ar")

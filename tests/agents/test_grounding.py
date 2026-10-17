@@ -138,3 +138,18 @@ def test_field_names_never_reach_the_text():
     # live run: "(home_threat 0.0, away_threat 0.0)" was published as prose
     assert check(claim("There was no threat (home_threat 0.0) early on.", [fig("0.0", "team_passes")])) == \
         ["'0.0' does not match field_tilt:NBR:0-600 team_passes = 3", "field name 'home_threat' in the text"]
+
+
+def test_a_count_is_never_published_as_a_percentage():
+    # final review: "3%" passed because the % sat outside the figure's written "3" (team_passes is a count)
+    assert check(claim("Northbridge had 3% of final-third passes.", [fig("3", "team_passes")])) == \
+        [f"'3' is a percentage but {TILT} team_passes is not a share"]
+    assert check(claim("Northbridge had 3 per cent of them.", [fig("3", "team_passes")])) == \
+        [f"'3' is a percentage but {TILT} team_passes is not a share"]
+    assert check(claim("Northbridge had 75 per cent of final-third passes.", [fig("75")])) == []
+
+
+def test_a_figure_cannot_hide_a_second_number():
+    # final review: written "3 of 99" was checked on its first number only, so 99 slipped through
+    assert check(claim("They made 3 of 99 passes.", [fig("3 of 99", "team_passes")])) == \
+        [f"'3 of 99' does not match {TILT} team_passes = 3"]
