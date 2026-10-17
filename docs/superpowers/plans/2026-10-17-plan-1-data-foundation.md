@@ -14,7 +14,7 @@
 
 | Plan | Covers | Roadmap days |
 |---|---|---|
-| **1. Data foundation (this file)** | Schemas, simulator, storyline knobs, dataset export, analytics library | 1 to 3 |
+| **1. Data foundation (this file)** | Schemas, simulator, storyline knobs, dataset export, analytics library (incl. midfield control, player impact) | 1 to 3 |
 | 2. Agents | Foundry setup, Agent Framework, Analyst, Tactical, Writers, Referee, Persona, Localization, orchestrator | 4 to 6 |
 | 3. Desk | FastAPI + SSE, live and replay modes, React desk UI | 6 to 8 |
 | 4. Ship | Eval harness, Azure Container Apps deploy, CI, README, video, submission | 8 to 10 |
@@ -70,6 +70,8 @@ src/jahbadh/
     overloads.py        # zone_overloads
     networks.py         # pass_network
     compare.py          # before_after
+    midfield.py         # midfield_control
+    players.py          # player_impact, player_rankings
 scripts/preview_match.py  # renders heatmaps/shape to PNG for eyeballing
 tests/                    # mirrors src layout
 ```
@@ -686,7 +688,146 @@ def test_before_after_with_dict_metric(sim_match_demo):
 
 ---
 
-### Task 14: Preview script (eyeball check) and Plan 1 wrap-up
+### Task 14: Midfield control
+
+*Added 17 Oct from the user's idea: teams that control the midfield usually dominate the game.*
+
+**Files:**
+- Create: `src/jahbadh/analytics/midfield.py`
+- Modify: `src/jahbadh/analytics/__init__.py` (re-export)
+- Test: `tests/analytics/test_midfield.py`
+
+**Interfaces:**
+- Consumes: `third`, `attack_x`, `is_home`, `metric_id`, the tracking columns from Task 1, and the `make_match`, `static_tracking`, `p`, `tackle` and `intercept` test helpers.
+- Produces: `midfield_control(match, team_id, start=0, end=5400) -> Metric`, name `"midfield_control"`, unit `"share"`. It combines three shares for the middle third (`third(attack_x) == "middle"`, which is pitch x 35 to 70 for both teams). Each share is the team's part of the two-team total, in [0, 1]:
+  - `ball`: successful passes that start in the middle third
+  - `numbers`: outfield players in the middle third, summed over tracking seconds
+  - `duels`: successful `TACKLE` + `INTERCEPTION` events located in the middle third
+
+  `value` is the plain mean of the components that have data. `data={"ball": .., "numbers": .., "duels": ..}`, and a component with no data on either side is `None` and left out of the mean. Evidence is the team's middle-third pass and duel ids, and `evidence_frames=(start, end-1)`. `value=None` plus `note` if no component has data.
+
+- [ ] **Step 1: Write the failing tests**
+
+```python
+def test_components_and_mean():
+    evs = [p(1, "NBR", 50), p(2, "NBR", 50), p(3, "NBR", 50), p(4, "RMU", 50),   # ball 3 of 4
+           tackle(5, "NBR", 50), intercept(6, "RMU", 60)]                          # duels 1 of 2
+    pos = {"NBR-6": (50, 30), "NBR-7": (45, 40), "RMU-6": (55, 34)}                # numbers 2 of 3
+    r = midfield_control(make_match(evs, tracking=static_tracking(pos, seconds=10)), "NBR")
+    assert r.data == {"ball": pytest.approx(0.75), "numbers": pytest.approx(2 / 3), "duels": pytest.approx(0.5)}
+    assert r.value == pytest.approx((0.75 + 2 / 3 + 0.5) / 3)
+    assert r.evidence_event_ids == [1, 2, 3, 5]
+
+def test_ignores_actions_outside_middle_third():
+    r = midfield_control(make_match([p(1, "NBR", 50), p(2, "RMU", 90), tackle(3, "RMU", 20)]), "NBR")
+    assert r.data["ball"] == pytest.approx(1.0) and r.data["duels"] is None and r.data["numbers"] is None
+
+def test_shares_are_complementary(sim_match):
+    a, b = midfield_control(sim_match, "NBR"), midfield_control(sim_match, "RMU")
+    assert a.value + b.value == pytest.approx(1.0)
+
+def test_empty_window_is_none():
+    r = midfield_control(make_match([]), "NBR")
+    assert r.value is None and r.note
+
+def test_midfield_control_tracks_dominance():
+    # Honesty check on the football claim: across 10 seeds x 2 teams, more midfield control
+    # should go with more territorial dominance (field tilt). Pearson r over 20 team-matches.
+    xs, ys = [], []
+    for s in range(1, 11):
+        m = simulate_match(s)
+        for t in ("NBR", "RMU"):
+            xs.append(midfield_control(m, t).value)
+            ys.append(field_tilt(m, t).value)
+    assert statistics.correlation(xs, ys) > 0.3
+```
+
+- [ ] **Step 2:** Run `pytest tests/analytics/test_midfield.py -q`. Expected: FAIL (module missing).
+- [ ] **Step 3:** Implement `midfield.py`.
+- [ ] **Step 4:** Run `pytest -q`. Expected: all pass. **If the dominance check fails, stop and show the user the numbers.** It would mean the simulator doesn't yet reward midfield control, and that's a product decision, not something to tune quietly.
+- [ ] **Step 5: Suggest commit:** `feat(analytics): add midfield control metric`.
+
+---
+
+### Task 15: Player impact
+
+*Added 17 Oct from the user's idea: show how much a specific player contributed and how they shaped the game.*
+
+**Files:**
+- Create: `src/jahbadh/analytics/players.py`
+- Modify: `src/jahbadh/analytics/__init__.py` (re-export), `tests/analytics/conftest.py` (add `shot_by`, `pass_xy`)
+- Test: `tests/analytics/test_players.py`
+
+**Interfaces:**
+- Consumes: `Match`, `Event`, `attack_x`, `third`, `is_home`, `metric_id`, `heatmap` (Task 11).
+- Produces:
+  - `player_impact(match, player_id, start=0, end=5400) -> Metric`, name `"player_impact"`, subject = player id, unit `"xGI"`. `value` is **expected goal involvement** (`xg + xa`), a standard metric, so no made-up weights. `data` holds every component, so agents can tell the right story for any position:
+    - `touches`: events where the player is the actor, excluding `SUBSTITUTION`, `CARD`, `KICKOFF` and `PERIOD_END`
+    - `involvement`: the player's touches divided by the team's touches in the window
+    - `passes`, `pass_completion`
+    - `progressive_passes`: successful passes with `attack_x(end_x) - attack_x(x) >= 10`
+    - `final_third_entries`: successful passes or carries that start outside the final third and end inside it
+    - `shots`, `xg`, `goals`
+    - `xa` and `assists`: a shot's assister is the passer of the team's most recent successful `PASS` before it, if that pass's receiver is the shooter, it came at most 15 s earlier, and no opponent event happened in between. `xa` sums the xG of the shots a player assisted, and `assists` counts the ones that were goals.
+    - `ball_wins`: successful `TACKLE` + `INTERCEPTION`
+    - `pressures`: `PRESSURE` events
+    - `minutes`: seconds on the pitch in the window (from tracking), divided by 60
+    - `heatmap_id`: the id of `heatmap(match, player_id, start, end)`, so the UI and agents can link to it
+
+    Evidence is every event id that contributed to any component, including the shots counted for `xa`. `evidence_frames=(start, end-1)`. A player with no minutes in the window gets `value=None` plus `note`.
+  - `player_rankings(match, team_id: str | None = None, start=0, end=5400, by: str = "value", n: int = 3) -> list[Metric]`: the `player_impact` of every player with minutes in the window (optionally for one team), sorted descending by `value` or by any numeric `data` key (for example `"progressive_passes"` or `"ball_wins"`). Ties are broken by player id.
+
+- [ ] **Step 1: Write the failing tests**
+
+```python
+def test_xa_credits_the_passer_of_the_shot():
+    evs = [pr(1, "NBR", "NBR-8", "NBR-9", t=100), shot_by(2, "NBR", "NBR-9", xg=0.3, t=104)]
+    m = make_match(evs, tracking=static_tracking({"NBR-8": (60, 30), "NBR-9": (90, 34)}, seconds=200))
+    assert player_impact(m, "NBR-8").data["xa"] == pytest.approx(0.3)
+    assert player_impact(m, "NBR-8").value == pytest.approx(0.3)      # xG 0 + xA 0.3
+    assert player_impact(m, "NBR-9").value == pytest.approx(0.3)      # xG 0.3 + xA 0
+    assert 2 in player_impact(m, "NBR-8").evidence_event_ids
+
+def test_no_xa_if_opponent_touched_it_or_too_late():
+    evs = [pr(1, "NBR", "NBR-8", "NBR-9", t=100), tackle(2, "RMU", 80, t=101), shot_by(3, "NBR", "NBR-9", xg=0.3, t=103),
+           pr(4, "NBR", "NBR-8", "NBR-9", t=300), shot_by(5, "NBR", "NBR-9", xg=0.2, t=330)]
+    m = make_match(evs, tracking=static_tracking({"NBR-8": (60, 30), "NBR-9": (90, 34)}, seconds=400))
+    assert player_impact(m, "NBR-8").data["xa"] == 0
+
+def test_progressive_passes_and_final_third_entries():
+    evs = [pass_xy(1, "NBR", "NBR-6", (40, 34), (55, 34)),     # progressive, no entry
+           pass_xy(2, "NBR", "NBR-6", (60, 34), (75, 34)),     # progressive + entry
+           pass_xy(3, "NBR", "NBR-6", (50, 34), (45, 34))]     # backwards
+    d = player_impact(make_match(evs, tracking=static_tracking({"NBR-6": (50, 34)}, seconds=10)), "NBR-6").data
+    assert d["progressive_passes"] == 2 and d["final_third_entries"] == 1 and d["passes"] == 3
+
+def test_away_player_progression_uses_away_direction():
+    d = player_impact(make_match([pass_xy(1, "RMU", "RMU-6", (60, 34), (45, 34))],
+                                 tracking=static_tracking({"RMU-6": (60, 34)}, seconds=10)), "RMU-6").data
+    assert d["progressive_passes"] == 1
+
+def test_involvement_and_minutes_for_a_sub(sim_match_demo):
+    sub = sim_match_demo.events_of(EventType.SUBSTITUTION)[0]
+    d = player_impact(sim_match_demo, sub.related_player_id).data
+    assert d["minutes"] == pytest.approx(30.0) and 0 <= d["involvement"] <= 1
+    assert player_impact(sim_match_demo, sub.related_player_id, 0, 3600).value is None
+
+def test_rankings_sorted_and_filtered(sim_match):
+    top = player_rankings(sim_match, team_id="RMU", by="ball_wins", n=3)
+    assert len(top) == 3 and all(r.subject.startswith("RMU") for r in top)
+    assert [r.data["ball_wins"] for r in top] == sorted((r.data["ball_wins"] for r in top), reverse=True)
+```
+
+(`shot_by(id, team, player, xg, t)` and `pass_xy(id, team, player, start, end)` are added to the analytics conftest. `pass_xy` builds a successful pass with explicit start and end coordinates.)
+
+- [ ] **Step 2:** Run `pytest tests/analytics/test_players.py -q`. Expected: FAIL (module missing).
+- [ ] **Step 3:** Implement `players.py`.
+- [ ] **Step 4:** Run `pytest -q`. Expected: all pass.
+- [ ] **Step 5: Suggest commit:** `feat(analytics): add player impact and rankings`.
+
+---
+
+### Task 16: Preview script (eyeball check) and Plan 1 wrap-up
 
 **Files:**
 - Create: `scripts/preview_match.py`
@@ -711,4 +852,4 @@ def test_preview_script_writes_pngs(tmp_path):
 - [ ] **Step 4:** Run `pytest -q`. Expected: all pass. Then run `python -m jahbadh.simulator --seed 42 --demo-storyline` and the preview script, **open the PNGs and show them to the user**. The RMU heatmaps should visibly change after minute 60. If they don't, the demo story isn't there yet, so go back to Task 6 and 12 constants.
 - [ ] **Step 5: Suggest commit:** `feat: add match preview script and README quickstart`.
 
-**Plan 1 is done when:** the full suite passes, the demo match shows a visible tactical shift at 60', and the user has committed each task. Then write Plan 2 (agents).
+**Plan 1 is done when:** the full suite passes, the demo match shows a visible tactical shift at 60', midfield control tracks dominance, and the user has committed each task. Then write Plan 2 (agents).
