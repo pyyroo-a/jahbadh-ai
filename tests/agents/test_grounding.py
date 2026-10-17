@@ -110,8 +110,31 @@ def test_percent_only_for_shares():
     store = EvidenceStore(m)
     mo = store.add(momentum(m, at_t=600))
     as_pct = Claim(id="m:c1", text="Rivermouth had 61% of the threat.", metric_ids=[mo.id], event_ids=[],
-                   figures=[Figure(metric_id=mo.id, field="away", written="61%")])
-    assert check_claim(as_pct, m, store, 601) == [f"'61%' is a percentage but {mo.id} away is not a share"]
+                   figures=[Figure(metric_id=mo.id, field="away_threat", written="61%")])
+    assert check_claim(as_pct, m, store, 601) == [f"'61%' is a percentage but {mo.id} away_threat is not a share"]
     share = as_pct.model_copy(update={"text": "Northbridge had 25% of the threat.",
                                       "figures": [Figure(metric_id=mo.id, field="value", written="25%")]})
     assert check_claim(share, m, store, 601) == []
+
+
+def test_a_figure_can_cite_a_shots_xg_from_its_event():
+    # live run: "a 0.92 xG chance" was true but dropped twice, because figures could only cite metrics
+    from fakes import shot_by
+    m = make_match([shot_by(7, "NBR", "NBR-9", 0.917, t=100, goal=True)])
+    store = EvidenceStore(m)
+    ok = Claim(id="m:c1", text="Jansen buried a 0.92 xG chance.", metric_ids=[], event_ids=[7],
+               figures=[Figure(metric_id="event:7", field="xg", written="0.92")])
+    assert check_claim(ok, m, store, 601) == []
+    wrong = ok.model_copy(update={"text": "Jansen buried a 0.5 xG chance.",
+                                  "figures": [Figure(metric_id="event:7", field="xg", written="0.5")]})
+    assert check_claim(wrong, m, store, 601) == ["'0.5' does not match event:7 xg = 0.917"]
+    uncited = ok.model_copy(update={"event_ids": [], "metric_ids": ["x"]})
+    assert "figure cites event:7 which is not in the evidence" in check_claim(uncited, m, store, 601)
+    bad_field = ok.model_copy(update={"figures": [Figure(metric_id="event:7", field="t", written="0.92")]})
+    assert check_claim(bad_field, m, store, 601) == ["event:7 has no field t"]
+
+
+def test_field_names_never_reach_the_text():
+    # live run: "(home_threat 0.0, away_threat 0.0)" was published as prose
+    assert check(claim("There was no threat (home_threat 0.0) early on.", [fig("0.0", "team_passes")])) == \
+        ["'0.0' does not match field_tilt:NBR:0-600 team_passes = 3", "field name 'home_threat' in the text"]

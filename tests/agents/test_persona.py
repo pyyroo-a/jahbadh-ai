@@ -55,3 +55,18 @@ def test_length_mismatch_falls_back():
 def test_nothing_to_render_makes_no_calls():
     run, _ = grounded_claim(personas=("pundit", "casual"))
     assert asyncio.run(render_personas(run, [])) == ([], []) and run.desk.client.calls == []
+
+
+def test_persona_lines_never_publish_em_dashes():
+    run, good = grounded_claim(personas=("pundit", "casual"))
+    pct = good.figures[0].written
+    run.desk.client.script["persona"] = [Rewrites(texts=[f"Northbridge FC lived up there \u2014 {pct} of the final-third passes."])]
+    run.desk.client.script["referee"] = [Verdicts(verdicts=[Verdict(claim_id=good.id, supported=True, reason="same")])]
+    renders, _ = asyncio.run(render_personas(run, [good]))
+    assert renders[1].text == f"Northbridge FC lived up there, {pct} of the final-third passes."
+
+
+def test_faithful_mode_allows_plain_explanations_of_terms():
+    # live run: 6 of 11 casual lines fell back because explaining "xG" counted as a new fact
+    from jahbadh.agents.prompts import INSTRUCTIONS
+    assert "explanation of a standard term" in INSTRUCTIONS["referee"]

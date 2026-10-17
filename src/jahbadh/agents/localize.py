@@ -19,10 +19,12 @@ from jahbadh.agents.desk import MomentRun
 from jahbadh.agents.llm import AgentOutputError, ask
 from jahbadh.agents.numbers import numeric_tokens
 from jahbadh.agents.prompts import polish_prompt
+from jahbadh.agents.writers import no_em_dashes
 from jahbadh.schemas import Match
 
 TAG = re.compile(r"</?span[^>]*>")
 MINUTE_MARK = re.compile(r"(?<![\d.])\d{1,2}['’]")
+NUMBER_MARK = re.compile(r"(?<![\d.])\d+(?:\.\d+)?%?(?![\d.])")
 
 
 class AzureTranslator:
@@ -35,8 +37,9 @@ class AzureTranslator:
     def translate(self, texts: list[str], to: str, keep: list[str]) -> list[str]:
         """Translate English texts in one request, with every keep term wrapped so Translator leaves it alone."""
         terms = sorted({html.escape(k, quote=False) for k in keep if k}, key=len, reverse=True)
-        # minute marks too: live Spanish turned "61'" into "61 pies" (61 feet)
-        pattern = re.compile("|".join([re.escape(t) for t in terms] + [MINUTE_MARK.pattern]))
+        # minute marks and numbers too: live Spanish turned "61'" into "61 pies" (61 feet), and live Arabic
+        # turned "5 goals" into number words, which fails the digit check
+        pattern = re.compile("|".join([re.escape(t) for t in terms] + [MINUTE_MARK.pattern, NUMBER_MARK.pattern]))
 
         def protect(text: str) -> str:
             return pattern.sub(lambda m: f'<span class="notranslate">{m.group(0)}</span>', html.escape(text, quote=False))
@@ -52,12 +55,31 @@ def keep_terms(match: Match) -> list[str]:
     return [t.name for t in teams] + [t.id for t in teams] + [p.name for t in teams for p in t.players]
 
 
-def survives(source: str, translated: str, keep: list[str]) -> list[str]:
-    """Reasons the translation lost or changed something. Numbers are compared after digit normalisation."""
+ARABIC_LETTER = re.compile(r"[\u0600-\u06FF]")
+ENGLISH_WORD = re.compile(r"[A-Za-z]{4,}")
+
+
+def _looks_untranslated(source: str, translated: str, keep: list[str]) -> bool:
+    """Half or more of the source's real English words (names aside) still there means it wasn't translated."""
+    def words(text: str) -> set[str]:
+        for k in keep:
+            text = text.replace(k, " ")
+        return {w.lower() for w in ENGLISH_WORD.findall(text)}
+    src = words(source)
+    return bool(src) and len(src & words(translated)) / len(src) >= 0.5
+
+
+def survives(source: str, translated: str, keep: list[str], language: str | None = None) -> list[str]:
+    """Reasons the translation lost or changed something, or isn't in the target language at all.
+    Numbers are compared after digit normalisation."""
     want, got = Counter(numeric_tokens(source)), Counter(numeric_tokens(translated))
     reasons = [f"number {n} missing" for n in (want - got).elements()]
     reasons += [f"extra number {n}" for n in (got - want).elements()]
     reasons += [f"name '{k}' missing" for k in keep if k in source and k not in translated]
+    if language == "ar" and not ARABIC_LETTER.search(translated):
+        reasons.append("not in Arabic")
+    elif language and _looks_untranslated(source, translated, keep):
+        reasons.append("looks untranslated")
     return reasons
 
 
@@ -66,7 +88,7 @@ async def _polish(run: MomentRun, language: str, sources: list[str], raw: list[s
         texts = (await ask(run.desk.agent("polish"), polish_prompt(language, sources, raw), Rewrites)).texts
     except AgentOutputError:
         return None
-    return texts if len(texts) == len(raw) else None
+    return [no_em_dashes(t) for t in texts] if len(texts) == len(raw) else None
 
 
 async def localize(run: MomentRun, renders: list[RenderedClaim]) -> tuple[list[RenderedClaim], list[Rejection]]:
@@ -88,14 +110,14 @@ async def localize(run: MomentRun, renders: list[RenderedClaim]) -> tuple[list[R
             for i, r in enumerate(group):
                 tried = []
                 if polished is not None:
-                    reasons = survives(r.text, polished[i], keep)
+                    reasons = survives(r.text, polished[i], keep, language)
                     if not reasons:
                         out.append(r.model_copy(update={"language": language, "text": polished[i]}))
                         continue
                     tried.append(f"polished: {'; '.join(reasons)}")
                 else:
                     tried.append("polish unavailable")
-                reasons = survives(r.text, raw[i], keep)
+                reasons = survives(r.text, raw[i], keep, language)
                 if not reasons:
                     out.append(r.model_copy(update={"language": language, "text": raw[i], "note": "raw translation"}))
                     text = polished[i] if polished is not None else raw[i]

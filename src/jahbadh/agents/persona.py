@@ -11,6 +11,7 @@ from jahbadh.agents.grounding import check_claim
 from jahbadh.agents.llm import AgentOutputError, ask
 from jahbadh.agents.prompts import persona_prompt
 from jahbadh.agents.referee import judge
+from jahbadh.agents.writers import no_em_dashes
 
 FALLBACK = "persona fallback"
 
@@ -21,7 +22,8 @@ def _pundit(claims: list[Claim]) -> list[RenderedClaim]:
 
 async def _render(run: MomentRun, persona: Persona, claims: list[Claim]) -> tuple[list[RenderedClaim], list[Rejection]]:
     try:
-        texts = (await ask(run.desk.agent("persona"), persona_prompt(persona, [c.text for c in claims]), Rewrites)).texts
+        reply = await ask(run.desk.agent("persona"), persona_prompt(persona, [c.text for c in claims]), Rewrites)
+        texts = [no_em_dashes(t) for t in reply.texts]
         problem = None if len(texts) == len(claims) else f"persona gave {len(texts)} rewrites for {len(claims)} lines"
     except AgentOutputError as e:
         texts, problem = [], str(e)

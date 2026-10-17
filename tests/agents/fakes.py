@@ -87,15 +87,26 @@ class ScriptedChatClient(FunctionInvocationLayer, BaseChatClient):
         return ChatResponse(messages=[Message(role="assistant", contents=[text])])
 
 
+FAKE_WORDS = {"ar": "كلمة", "es": "palabra"}
+
+
+def fake_translation(text: str, to: str, keep=()) -> str:
+    """Looks translated: keep terms and numbers stay, every other English word becomes a target-language word."""
+    import re
+    terms = sorted((k for k in keep if k), key=len, reverse=True)
+    parts = re.split("(" + "|".join(map(re.escape, terms)) + ")", text) if terms else [text]
+    return "".join(part if part in terms else re.sub(r"[A-Za-z]{2,}", FAKE_WORDS[to], part) for part in parts)
+
+
 class FakeTranslator:
-    """Stands in for Azure AI Translator: tags each text with the target language, or mangles it on request."""
+    """Stands in for Azure AI Translator, or mangles the text on request."""
 
     def __init__(self, mangle=None):
         self.mangle, self.calls = mangle, []
 
     def translate(self, texts, to, keep):
         self.calls.append((list(texts), to, list(keep)))
-        return [self.mangle(t) if self.mangle else f"[{to}] {t}" for t in texts]
+        return [self.mangle(t) if self.mangle else fake_translation(t, to, keep) for t in texts]
 
 
 def full_time_moment():
@@ -110,6 +121,13 @@ def run_for(script: dict, moment=None, **desk_kw):
     m = demo_match()
     moment = moment or next(x for x in detect_moments(m) if x.kind == "formation_change")
     return Desk(client=ScriptedChatClient(script), match=m, **desk_kw).start(moment)
+
+
+def scripted_full_desk_client() -> ScriptedChatClient:
+    """A client that can run any number of moments: agents find nothing, so every moment publishes empty."""
+    from jahbadh.agents.contracts import Draft, Findings
+    return ScriptedChatClient({}, defaults={"analyst": Findings(findings=[]), "tactical": Findings(findings=[]),
+                                            "writer": Draft(claims=[])})
 
 
 def grounded_claim(personas=("pundit",), languages=("en",), translator=None):

@@ -9,7 +9,8 @@ def test_momentum_favours_team_with_more_threat():
     r = momentum(m, at_t=600)
     assert r.value == pytest.approx(0.4 / (0.4 + 0.02)) and set(r.evidence_event_ids) == {1, 2}
     assert r.subject == "MATCH" and r.window == (0, 600)
-    assert r.data == {"home": pytest.approx(0.4), "away": pytest.approx(0.02)}
+    # raw threat in xG units, named so nobody reads them as shares (a live writer called 0.978 an "away share")
+    assert r.data == {"home_threat": pytest.approx(0.4), "away_threat": pytest.approx(0.02)}
 
 
 def test_momentum_ignores_events_outside_window():

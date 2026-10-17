@@ -67,3 +67,13 @@ def test_writer_bookkeeping_is_tidied_but_truth_is_not():
     assert claim.text == "Rivermouth went 12.5 metres wider, by 61'-and stayed there."
     assert claim.metric_ids == [WIDTH_CHANGE]                     # added: it is in the store and a figure uses it
     assert [f.written for f in claim.figures] == ["12.5"]         # 53.7 and 7 never appear in the text, so they say nothing
+
+
+def test_minute_marks_are_not_figures_and_event_figures_bring_their_event():
+    # live run: the writer made a figure out of "1'" and lost a claim; minutes have their own rule
+    draft = ClaimDraft(text="At 61' Rivermouth's 0.74 xG chance went in.", metric_ids=[], event_ids=[],
+                       figures=[Figure(metric_id=WIDTH_CHANGE, field="value", written="61'"),
+                                Figure(metric_id="event:975", field="xg", written="0.74")])
+    run = ft_run({"writer": [Draft(claims=[draft])]})
+    [claim] = asyncio.run(write(run, []))
+    assert [f.written for f in claim.figures] == ["0.74"] and claim.event_ids == [975]

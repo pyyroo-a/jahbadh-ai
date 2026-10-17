@@ -29,7 +29,7 @@ def momentum(match: Match, at_t: float, window_s: float = 600) -> Metric:
         value=home / total if total else None,
         unit="home_share",
         evidence_event_ids=sorted(evidence),
-        data={"home": home, "away": away},
+        data={"home_threat": home, "away_threat": away},
         note=None if total else "Neither team created any threat in this window.",
     )
 

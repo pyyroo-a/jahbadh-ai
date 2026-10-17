@@ -45,11 +45,15 @@ For each claim give:
 - figures: one entry for every number in the text, with metric_id, field (a key of that metric's "fields")
   and written (the number exactly as it appears in the text, like "79%", "1.13" or "4v2").
 Percentages come from shares: 0.787 is written "79%". You may drop decimals, never change a number.
-Only shares can be percentages: momentum's home and away fields are threat in xG, not shares.
-Describe a metric's time span the way its "window" says it (51'-61' is the ten minutes up to 61').
+Only shares can be percentages: momentum's home_threat and away_threat are threat in xG, not shares.
+Describe time spans naturally and truthfully: a window of 51'-61' is "the ten minutes before the switch" or
+"from 51' to 61'", never "the 51'-61' window". Minutes are never figures; they have their own check.
+To quote a shot's xG from an event line, use a figure with metric_id "event:<id>" and field "xg".
+Round like a broadcaster: xG to two decimals, metres to whole numbers, shares as whole percentages.
 Keep each sentence readable: two or three numbers, not a list of every stat.
 A minute in the text needs a cited event at that broadcast minute, or a cited metric whose window starts or ends there.
-Formations like 3-4-3 and the score are fine. Any other number needs a figure. Never put ids in the text.
+Formations like 3-4-3 and the score are fine. Any other number needs a figure. Never put ids, field names
+(like home_threat or team_passes) or words like "cited" or "evidence" in the text: write for viewers.
 {SHARED_RULES}""",
     "referee": f"""You are the Referee on a live football match desk. You check claims before anything is published.
 A program has already checked every id and number; your job is meaning.
@@ -63,7 +67,9 @@ In support mode, decide for each claim whether its cited evidence really support
 - superlatives (most, best, primary, only) need a ranking or comparison in the evidence;
 - the claim must not say more than the evidence shows.
 In faithful mode, each rewrite must say the same thing as its original: no new facts, numbers, names or causes,
-and nothing flipped.
+and nothing flipped. A short plain-language explanation of a standard term (what xG, PPDA, field tilt or
+momentum mean in general) is not a new fact and is allowed; a claim about this match that the original
+does not make is not.
 Be strict but fair: never reject a claim only for style. Give exactly one verdict per claim id, with a short
 reason a writer can act on.
 {SHARED_RULES}""",
@@ -77,15 +83,15 @@ but every number you keep must be written exactly as it is in the line.
 INSTRUCTIONS["polish"] = f"""You polish machine translations of football match desk lines so they read like a native
 commentator wrote them: fix football terms (xG, pressing, field tilt, formations, back three) and awkward phrasing.
 Reply with exactly one line per input line, in the same order.
-Keep every number exactly as it is in the translation, and keep every team and player name in its original
-Latin spelling. Never add or remove a fact.
+Keep every number as digits, exactly as it is in the translation, and keep every team and player name in its
+original Latin spelling. Always reply in the target language. Never add or remove a fact.
 {SHARED_RULES}"""
 
 LANGUAGE_NAMES = {"ar": "Arabic", "es": "Spanish"}
 
 PERSONA_STYLES = {
-    "casual": "a casual fan: plain everyday words, warm and lively, and explain jargon like PPDA, xG or field "
-              "tilt in a few simple words",
+    "casual": "a casual fan: plain everyday words, warm and lively. Swap jargon like PPDA, xG or field tilt for "
+              "plain words, or add a few words on what the term means in general",
     "fantasy": "a fantasy football player: lead with the players involved and what the line means for their output",
 }
 

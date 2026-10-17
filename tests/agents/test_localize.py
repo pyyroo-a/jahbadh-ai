@@ -3,7 +3,7 @@ import asyncio
 import pytest
 from azure.ai.translation.text.models import TranslatedTextItem, TranslationText
 
-from fakes import FakeTranslator, demo_match, grounded_claim
+from fakes import FakeTranslator, demo_match, fake_translation, grounded_claim
 from jahbadh.agents.config import MissingSetting, Settings
 from jahbadh.agents.contracts import RenderedClaim, Rewrites
 from jahbadh.agents.localize import AzureTranslator, keep_terms, localize, survives
@@ -34,17 +34,20 @@ def test_keep_terms_cover_teams_and_players():
 
 def test_polished_translation_is_used_when_it_survives():
     run, good = grounded_claim(languages=("en", "ar"), translator=FakeTranslator())
-    run.desk.client.script["polish"] = [Rewrites(texts=[f"[ar*] {good.text}"])]
+    raw = fake_translation(good.text, "ar", keep_terms(run.desk.match))
+    polished = raw + " تم"
+    run.desk.client.script["polish"] = [Rewrites(texts=[polished])]
     renders, rejected = asyncio.run(localize(run, [en(good)]))
-    assert [(r.language, r.text, r.note) for r in renders] == [("ar", f"[ar*] {good.text}", None)] and rejected == []
-    assert "Arabic" in run.desk.client.calls[0][1][-1] and f"[ar] {good.text}" in run.desk.client.calls[0][1][-1]
+    assert [(r.language, r.text, r.note) for r in renders] == [("ar", polished, None)] and rejected == []
+    assert "Arabic" in run.desk.client.calls[0][1][-1] and raw in run.desk.client.calls[0][1][-1]
 
 
 def test_raw_translation_when_polish_breaks_a_number():
     run, good = grounded_claim(languages=("en", "es"), translator=FakeTranslator())
     run.desk.client.script["polish"] = [Rewrites(texts=["Northbridge FC tuvo 99% de los pases."])]
     renders, rejected = asyncio.run(localize(run, [en(good)]))
-    assert renders[0].text == f"[es] {good.text}" and renders[0].note == "raw translation"
+    assert renders[0].text == fake_translation(good.text, "es", keep_terms(run.desk.match))
+    assert renders[0].note == "raw translation"
     assert rejected[0].language == "es" and any("99" in r for r in rejected[0].reasons)
 
 
@@ -97,9 +100,44 @@ def test_azure_translator_protects_minute_marks(monkeypatch):
     monkeypatch.setattr(tr.client, "translate", lambda body: sent.extend(body) or [
         TranslatedTextItem(translations=[TranslationText(language="es", text="x")])])
     tr.translate(["They scored by 61' and 7.5 xG."], "es", [])
-    assert sent[0].text == "They scored by <span class=\"notranslate\">61'</span> and 7.5 xG."
+    assert sent[0].text == ("They scored by <span class=\"notranslate\">61'</span> and "
+                            "<span class=\"notranslate\">7.5</span> xG.")
 
 
 def test_azure_translator_needs_key_and_region():
     with pytest.raises(MissingSetting, match="TRANSLATOR_KEY"):
         AzureTranslator(Settings(translator_region="uaenorth"))
+
+
+def test_untranslated_output_is_caught():
+    # live run: 4 of 22 Arabic lines were really English, because the polish pass sometimes answered in English
+    src = "Rivermouth full back Tomas Lindqvist committed a foul in his defensive third and was booked."
+    english = "Rivermouth full back Tomas Lindqvist was booked for a foul in his defensive third."
+    assert "not in Arabic" in survives(src, english, ["Tomas Lindqvist"], "ar")
+    assert "looks untranslated" in survives(src, english, ["Tomas Lindqvist"], "es")
+
+
+def test_real_translations_pass_the_language_check():
+    src = "Northbridge FC had 79% of the final-third passes and 1.13 xG by 61'."
+    es = "Northbridge FC tuvo el 79% de los pases en el último tercio y 1,13 xG por 61'."
+    ar = ("Northbridge FC سجل 79٪ من التمريرات "
+          "و1.13 xG بحلول 61'.")
+    assert survives(src, es, ["Northbridge FC"], "es") == [] and survives(src, ar, ["Northbridge FC"], "ar") == []
+
+
+def test_english_polish_falls_back_to_the_raw_translation():
+    run, good = grounded_claim(languages=("en", "ar"), translator=FakeTranslator())
+    run.desk.client.script["polish"] = [Rewrites(texts=[good.text])]
+    renders, rejected = asyncio.run(localize(run, [en(good)]))
+    assert renders[0].note == "raw translation" and "not in Arabic" in "; ".join(rejected[0].reasons)
+
+
+def test_azure_translator_keeps_numbers_as_digits(monkeypatch):
+    # live run: "1 ball win" and "5 goals" came back as Arabic number words, so good lines fell back to English
+    sent = []
+    tr = AzureTranslator(Settings(translator_key="k", translator_region="uaenorth"))
+    monkeypatch.setattr(tr.client, "translate", lambda body: sent.extend(body) or [
+        TranslatedTextItem(translations=[TranslationText(language="ar", text="x")])])
+    tr.translate(["He had 1 ball win, 5 goals and 79% completion."], "ar", [])
+    assert sent[0].text == ('He had <span class="notranslate">1</span> ball win, <span class="notranslate">5</span> '
+                            'goals and <span class="notranslate">79%</span> completion.')

@@ -7,10 +7,10 @@ by the evidence, and no other number is left over.
 
 import re
 
-from jahbadh.agents.contracts import Claim
+from jahbadh.agents.contracts import Claim, Figure
 from jahbadh.agents.evidence import EvidenceStore, is_share, resolve, score_at
 from jahbadh.agents.numbers import NUMBER, number_matches
-from jahbadh.schemas import EventType, Match, Metric
+from jahbadh.schemas import Event, EventType, Match, Metric
 
 MINUTE_PATTERNS = [re.compile(r"(?<![\d.])(\d{1,2})['’]"),
                    re.compile(r"\b(\d{1,2})(?:st|nd|rd|th)[- ]minute\b"),
@@ -18,6 +18,7 @@ MINUTE_PATTERNS = [re.compile(r"(?<![\d.])(\d{1,2})['’]"),
 DURATION = re.compile(r"\b(\d{1,2}) minutes?\b")
 FORMATION = re.compile(r"\b\d(?:-\d){2,3}\b")
 SCORE = re.compile(r"\b(\d{1,2})-(\d{1,2})\b")
+FIELD_NAME = re.compile(r"\b[a-z]+(?:_[a-z]+)+\b")      # e.g. home_threat: written for code, not viewers
 
 
 def occurrence(written: str, text: str) -> re.Match | None:
@@ -58,6 +59,28 @@ def _formations(match: Match, horizon: float) -> set[str]:
     return known
 
 
+EVENT_FIELDS = ("xg",)
+
+
+def _figure_source(fig: Figure, claim: Claim, store: EvidenceStore,
+                   known_events: dict[int, Event]) -> tuple[bool, float | str | None, bool]:
+    """(is the figure's source cited evidence, the value it points at, may it be a percentage).
+    A figure cites a metric field, or "event:<id>" with field "xg" for a shot's xG from its event line."""
+    if fig.metric_id.startswith("event:"):
+        raw = fig.metric_id.removeprefix("event:")
+        event = known_events.get(int(raw)) if raw.isdigit() else None
+        if event is None:
+            return False, None, False
+        return True, getattr(event, fig.field) if fig.field in EVENT_FIELDS else None, False
+    if fig.metric_id not in claim.metric_ids or fig.metric_id not in store:
+        return False, None, False
+    metric = store.get(fig.metric_id)
+    try:
+        return True, resolve(metric, fig.field), is_share(metric, fig.field)
+    except KeyError:
+        return True, None, False
+
+
 def check_claim(claim: Claim, match: Match, store: EvidenceStore, horizon: float) -> list[str]:
     reasons: list[str] = []
     if not claim.metric_ids and not claim.event_ids:
@@ -82,20 +105,18 @@ def check_claim(claim: Claim, match: Match, store: EvidenceStore, horizon: float
             events.append(e)
 
     text = claim.text
+    known_events = {e.id: e for e in events}
     for fig in claim.figures:
         found = occurrence(fig.written, text)
-        if fig.metric_id not in claim.metric_ids or fig.metric_id not in store:
+        cited, value, share = _figure_source(fig, claim, store, known_events)
+        if not cited:
             reasons.append(f"figure cites {fig.metric_id} which is not in the evidence")
         elif found is None:
             reasons.append(f"'{fig.written}' is not in the text")
         else:
-            try:
-                value = resolve(store.get(fig.metric_id), fig.field)
-            except KeyError:
-                value = None
             if value is None:
                 reasons.append(f"{fig.metric_id} has no field {fig.field}")
-            elif "%" in fig.written and not is_share(store.get(fig.metric_id), fig.field):
+            elif "%" in fig.written and not share:
                 reasons.append(f"'{fig.written}' is a percentage but {fig.metric_id} {fig.field} is not a share")
             elif not number_matches(fig.written, value):
                 shown = f"{value:.3f}" if isinstance(value, float) else value
@@ -129,4 +150,5 @@ def check_claim(claim: Claim, match: Match, store: EvidenceStore, horizon: float
             text = _cut(text, found.span())
 
     reasons += [f"unsupported number '{token}'" for token in NUMBER.findall(text)]
+    reasons += [f"field name '{name}' in the text" for name in FIELD_NAME.findall(claim.text)]
     return reasons
