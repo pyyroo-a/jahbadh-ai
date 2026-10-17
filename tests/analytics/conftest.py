@@ -66,6 +66,19 @@ def shot(id: int, team: str, xg: float, t: float | None = None) -> Event:
     return _ev(id, team, EventType.SHOT, 95.0 if team == "NBR" else 10.0, t, xg=xg, outcome=False)
 
 
+def shot_by(id: int, team: str, player: str, xg: float, t: float | None = None, goal: bool = False) -> Event:
+    return Event(id=id, t=float(id) if t is None else t, period=1, team_id=team, player_id=player,
+                 type=EventType.SHOT, x=95.0 if team == "NBR" else 10.0, y=34.0, xg=xg, outcome=goal)
+
+
+def pass_xy(id: int, team: str, player: str, start: tuple[float, float], end: tuple[float, float],
+            t: float | None = None) -> Event:
+    """Successful pass with explicit pitch start and end coordinates."""
+    return Event(id=id, t=float(id) if t is None else t, period=1, team_id=team, player_id=player,
+                 type=EventType.PASS, x=start[0], y=start[1], end_x=end[0], end_y=end[1], outcome=True,
+                 related_player_id=f"{team}-10")
+
+
 def tackle(id: int, team: str, x: float, t: float | None = None) -> Event:
     return _ev(id, team, EventType.TACKLE, x, t, outcome=True)
 
