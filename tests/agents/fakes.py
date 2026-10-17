@@ -101,6 +101,18 @@ def run_for(script: dict, moment=None, **desk_kw):
     return Desk(client=ScriptedChatClient(script), match=m, **desk_kw).start(moment)
 
 
+def grounded_claim(personas=("pundit",), languages=("en",), translator=None):
+    """A full-time run with NBR's field tilt in the store and a claim that passes the deterministic check."""
+    from jahbadh.agents.contracts import Claim, Figure
+    from jahbadh.analytics import field_tilt
+    run = run_for({}, moment=full_time_moment(), personas=personas, languages=languages, translator=translator)
+    tilt = run.store.add(field_tilt(run.desk.match, "NBR"))
+    pct = f"{round(tilt.value * 100)}%"
+    claim = Claim(id="full_time-5400:c1", text=f"Northbridge FC had {pct} of the final-third passes.",
+                  metric_ids=[tilt.id], event_ids=[], figures=[Figure(metric_id=tilt.id, field="value", written=pct)])
+    return run, claim
+
+
 def responses_api_body(text: str) -> dict:
     """A minimal completed Responses API reply, for tests that fake the HTTP layer."""
     return {

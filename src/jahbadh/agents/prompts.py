@@ -48,6 +48,19 @@ Percentages come from shares: 0.787 is written "79%". You may drop decimals, nev
 A minute in the text needs a cited event at that broadcast minute, or a cited metric whose window starts or ends there.
 Formations like 3-4-3 and the score are fine. Any other number needs a figure. Never put ids in the text.
 {SHARED_RULES}""",
+    "referee": f"""You are the Referee on a live football match desk. You check claims before anything is published.
+A program has already checked every id and number; your job is meaning.
+In support mode, decide for each claim whether its cited evidence really supports the sentence:
+- direction words (rose, fell, wider, deeper, more, less) must match the sign of a change metric's value;
+- causal words (because, led to, thanks to) need evidence for the cause, and midfield control is descriptive,
+  so it can never be the cause of anything;
+- the teams and players named must be the ones in the evidence;
+- the claim must not say more than the evidence shows.
+In faithful mode, each rewrite must say the same thing as its original: no new facts, numbers, names or causes,
+and nothing flipped.
+Be strict but fair: never reject a claim only for style. Give exactly one verdict per claim id, with a short
+reason a writer can act on.
+{SHARED_RULES}""",
 }
 
 KIND_FOCUS = {
@@ -105,3 +118,16 @@ def rewrite_prompt(run: "MomentRun", rejected: list[tuple[Claim, list[str]]], fi
             + "\n\nRewrite each one so the evidence fully backs it, or make it more modest. Reply with exactly one "
             f"claim per rejected claim, in the same order.\nFindings:\n{findings_block(findings)}\n\n"
             f"{evidence_block(run, metrics, events)}")
+
+
+def judge_prompt(run: "MomentRun", claims: list[Claim], mode: str, originals: dict[str, str] | None = None) -> str:
+    if mode == "faithful":
+        task = "Faithful mode: does each rewrite say the same as its original, with nothing new?"
+        lines = [f"- {c.id}\n  original: {(originals or {}).get(c.id, '(missing)')}\n  rewrite: {c.text}" for c in claims]
+    else:
+        task = "Support mode: does the cited evidence really support each claim?"
+        lines = [f"- {c.id}: {c.text}\n  cites metrics: {', '.join(c.metric_ids) or 'none'}; events: "
+                 f"{', '.join(map(str, c.event_ids)) or 'none'}" for c in claims]
+    metrics, events = _cited([], claims)
+    return (f"{moment_context(run.desk.match, run.moment)}\n\n{task}\nClaims:\n" + "\n".join(lines)
+            + f"\n\n{evidence_block(run, metrics, events)}")
