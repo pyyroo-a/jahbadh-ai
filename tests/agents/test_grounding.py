@@ -100,3 +100,18 @@ def test_formation_and_true_score_pass_but_a_wrong_score_fails():
     made_up = ok.model_copy(update={"text": "Rivermouth went to a 5-3-2 at 61'."})
     assert check_claim(made_up, m, store, switch.t + 1) == \
         ["unsupported number '5'", "unsupported number '3'", "unsupported number '2'"]
+
+
+def test_percent_only_for_shares():
+    # live run: momentum's raw threat (away 0.61 xG of threat) was written as "61%" and passed
+    from fakes import shot
+    from jahbadh.analytics import momentum
+    m = make_match([shot(1, "NBR", 0.2, t=100), shot(2, "RMU", 0.61, t=200)])
+    store = EvidenceStore(m)
+    mo = store.add(momentum(m, at_t=600))
+    as_pct = Claim(id="m:c1", text="Rivermouth had 61% of the threat.", metric_ids=[mo.id], event_ids=[],
+                   figures=[Figure(metric_id=mo.id, field="away", written="61%")])
+    assert check_claim(as_pct, m, store, 601) == [f"'61%' is a percentage but {mo.id} away is not a share"]
+    share = as_pct.model_copy(update={"text": "Northbridge had 25% of the threat.",
+                                      "figures": [Figure(metric_id=mo.id, field="value", written="25%")]})
+    assert check_claim(share, m, store, 601) == []

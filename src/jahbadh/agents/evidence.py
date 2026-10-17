@@ -56,6 +56,17 @@ def resolve(metric: Metric, field: str) -> float | str | None:
     return node
 
 
+SHARE_UNITS = {"share", "home_share", "share_of_seconds"}
+SHARE_DATA_KEYS = {"pass_completion", "involvement", "ball", "numbers", "duels", "left", "centre", "right", "by_zone"}
+
+
+def is_share(metric: Metric, field: str) -> bool:
+    """Can this field honestly be written as a percentage? Only fractions of a whole are."""
+    if field in ("value", "before.value", "after.value"):
+        return metric.unit in SHARE_UNITS
+    return field.split(".")[0] in SHARE_DATA_KEYS
+
+
 def _round(v: object) -> object:
     return round(v, 3) if isinstance(v, float) else v
 

@@ -53,3 +53,17 @@ def test_kind_for():
     assert kind_for(Moment(id="x", kind="full_time", t=5400, label="FT")) == "recap"
     assert kind_for(Moment(id="x", kind="spotlight", t=5400, player_id="RMU-33", label="S")) == "spotlight"
     assert kind_for(Moment(id="x", kind="goal", t=900, label="G")) == "commentary"
+
+
+def test_writer_bookkeeping_is_tidied_but_truth_is_not():
+    # live run: the writer used a metric's number without listing the metric, listed a figure it never wrote,
+    # and used em dashes; none of that is a false claim, so it is fixed before the Referee sees it
+    sloppy = ClaimDraft(text="Rivermouth went 12.5 metres wider—by 61'–and stayed there.", metric_ids=[], event_ids=[975],
+                        figures=[Figure(metric_id=WIDTH_CHANGE, field="value", written="12.5"),
+                                 Figure(metric_id=WIDTH_CHANGE, field="before.value", written="53.7"),
+                                 Figure(metric_id="ppda:XXX:0-1", field="value", written="7")])
+    run = ft_run({"writer": [Draft(claims=[sloppy])]})
+    [claim] = asyncio.run(write(run, []))
+    assert claim.text == "Rivermouth went 12.5 metres wider, by 61'-and stayed there."
+    assert claim.metric_ids == [WIDTH_CHANGE]                     # added: it is in the store and a figure uses it
+    assert [f.written for f in claim.figures] == ["12.5"]         # 53.7 and 7 never appear in the text, so they say nothing

@@ -9,7 +9,12 @@ from pydantic import BaseModel
 
 from jahbadh.agents.config import load_settings
 from jahbadh.agents.llm import ask, make_agent, make_chat_client
+from jahbadh.agents.desk import Desk
 from jahbadh.agents.localize import AzureTranslator, survives
+from jahbadh.agents.moments import detect_moments
+from jahbadh.agents.pipeline import run_moment
+from jahbadh.simulator import simulate_match
+from jahbadh.simulator.storyline import DEMO_STORYLINE
 
 pytestmark = [pytest.mark.live,
               pytest.mark.skipif(os.environ.get("JAHBADH_LIVE") != "1", reason="set JAHBADH_LIVE=1 to call Azure")]
@@ -41,3 +46,12 @@ def test_live_translator_keeps_numbers_and_names():
         out = tr.translate([src], lang, ["Northbridge FC"])[0]
         print(lang, out)
         assert survives(src, out, ["Northbridge FC"]) == [], out
+
+
+def test_live_one_moment_end_to_end():
+    m = simulate_match(42, storyline=DEMO_STORYLINE)
+    desk = Desk(client=make_chat_client(load_settings()), match=m)
+    moment = next(x for x in detect_moments(m) if x.kind == "formation_change")
+    item = asyncio.run(run_moment(desk, moment))
+    print(item.model_dump_json(indent=2, exclude={"metrics"}))
+    assert item.claims or item.rejections      # the desk produced something and the Referee looked at it

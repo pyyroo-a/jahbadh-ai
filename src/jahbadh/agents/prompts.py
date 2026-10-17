@@ -45,6 +45,9 @@ For each claim give:
 - figures: one entry for every number in the text, with metric_id, field (a key of that metric's "fields")
   and written (the number exactly as it appears in the text, like "79%", "1.13" or "4v2").
 Percentages come from shares: 0.787 is written "79%". You may drop decimals, never change a number.
+Only shares can be percentages: momentum's home and away fields are threat in xG, not shares.
+Describe a metric's time span the way its "window" says it (51'-61' is the ten minutes up to 61').
+Keep each sentence readable: two or three numbers, not a list of every stat.
 A minute in the text needs a cited event at that broadcast minute, or a cited metric whose window starts or ends there.
 Formations like 3-4-3 and the score are fine. Any other number needs a figure. Never put ids in the text.
 {SHARED_RULES}""",
@@ -55,6 +58,9 @@ In support mode, decide for each claim whether its cited evidence really support
 - causal words (because, led to, thanks to) need evidence for the cause, and midfield control is descriptive,
   so it can never be the cause of anything;
 - the teams and players named must be the ones in the evidence;
+- time phrases (in the minute before, since half time, over the last 10 minutes) must match the cited metric's
+  window or the cited events' minutes;
+- superlatives (most, best, primary, only) need a ranking or comparison in the evidence;
 - the claim must not say more than the evidence shows.
 In faithful mode, each rewrite must say the same thing as its original: no new facts, numbers, names or causes,
 and nothing flipped.

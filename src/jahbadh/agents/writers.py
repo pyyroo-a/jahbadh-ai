@@ -1,13 +1,27 @@
 """The Writer: turns findings into structured, evidence-tagged claims. It has no tools on purpose."""
 
+import re
 from typing import Literal
 
-from jahbadh.agents.contracts import Claim, Draft, Finding, Moment
+from jahbadh.agents.contracts import Claim, ClaimDraft, Draft, Finding, Moment
 from jahbadh.agents.desk import MomentRun
+from jahbadh.agents.grounding import occurrence
 from jahbadh.agents.llm import ask
 from jahbadh.agents.prompts import rewrite_prompt, writer_prompt
 
 WriterKind = Literal["commentary", "recap", "spotlight"]
+
+EM_DASH = re.compile(r"\s*\u2014\s*|\s+\u2013\s+")   # em dash anywhere, or a spaced en dash
+EN_DASH = "\u2013"
+
+
+def tidy(run: MomentRun, draft: ClaimDraft) -> ClaimDraft:
+    """Fix bookkeeping, never truth: no em dashes, figures only for numbers really in the text, and a figure's
+    metric listed as evidence when it is in the store. Every number left still has to pass the Referee."""
+    text = EM_DASH.sub(", ", draft.text).replace(EN_DASH, "-")
+    figures = [f for f in draft.figures if occurrence(f.written, text)]
+    metric_ids = list(dict.fromkeys(draft.metric_ids + [f.metric_id for f in figures if f.metric_id in run.store]))
+    return draft.model_copy(update={"text": text, "figures": figures, "metric_ids": metric_ids})
 
 
 def kind_for(moment: Moment) -> WriterKind:
@@ -16,10 +30,10 @@ def kind_for(moment: Moment) -> WriterKind:
 
 async def write(run: MomentRun, findings: list[Finding]) -> list[Claim]:
     draft = await ask(run.desk.agent("writer"), writer_prompt(run, findings, kind_for(run.moment)), Draft)
-    return [Claim(id=f"{run.moment.id}:c{i}", **c.model_dump()) for i, c in enumerate(draft.claims, 1)]
+    return [Claim(id=f"{run.moment.id}:c{i}", **tidy(run, c).model_dump()) for i, c in enumerate(draft.claims, 1)]
 
 
 async def rewrite(run: MomentRun, rejected: list[tuple[Claim, list[str]]], findings: list[Finding]) -> list[Claim]:
     """Fixed versions of rejected claims. They keep the original ids by position; extras are ignored."""
     draft = await ask(run.desk.agent("writer"), rewrite_prompt(run, rejected, findings), Draft)
-    return [Claim(id=old.id, **new.model_dump()) for (old, _), new in zip(rejected, draft.claims)]
+    return [Claim(id=old.id, **tidy(run, new).model_dump()) for (old, _), new in zip(rejected, draft.claims)]

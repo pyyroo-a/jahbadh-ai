@@ -8,7 +8,7 @@ by the evidence, and no other number is left over.
 import re
 
 from jahbadh.agents.contracts import Claim
-from jahbadh.agents.evidence import EvidenceStore, resolve, score_at
+from jahbadh.agents.evidence import EvidenceStore, is_share, resolve, score_at
 from jahbadh.agents.numbers import NUMBER, number_matches
 from jahbadh.schemas import EventType, Match, Metric
 
@@ -20,7 +20,7 @@ FORMATION = re.compile(r"\b\d(?:-\d){2,3}\b")
 SCORE = re.compile(r"\b(\d{1,2})-(\d{1,2})\b")
 
 
-def _occurrence(written: str, text: str) -> re.Match | None:
+def occurrence(written: str, text: str) -> re.Match | None:
     """`written` as a whole number in text: "3" is not found inside "13" or "3.5"."""
     return re.search(r"(?<![\d.])" + re.escape(written) + r"(?!\d|\.\d)", text)
 
@@ -83,7 +83,7 @@ def check_claim(claim: Claim, match: Match, store: EvidenceStore, horizon: float
 
     text = claim.text
     for fig in claim.figures:
-        found = _occurrence(fig.written, text)
+        found = occurrence(fig.written, text)
         if fig.metric_id not in claim.metric_ids or fig.metric_id not in store:
             reasons.append(f"figure cites {fig.metric_id} which is not in the evidence")
         elif found is None:
@@ -95,6 +95,8 @@ def check_claim(claim: Claim, match: Match, store: EvidenceStore, horizon: float
                 value = None
             if value is None:
                 reasons.append(f"{fig.metric_id} has no field {fig.field}")
+            elif "%" in fig.written and not is_share(store.get(fig.metric_id), fig.field):
+                reasons.append(f"'{fig.written}' is a percentage but {fig.metric_id} {fig.field} is not a share")
             elif not number_matches(fig.written, value):
                 shown = f"{value:.3f}" if isinstance(value, float) else value
                 reasons.append(f"'{fig.written}' does not match {fig.metric_id} {fig.field} = {shown}")
