@@ -29,3 +29,6 @@ web/dist/
 Thumbs.db
 .vscode/
 .idea/
+
+# Preview charts (generated)
+previews/
