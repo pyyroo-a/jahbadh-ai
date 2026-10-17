@@ -2,7 +2,8 @@ import pytest
 
 from jahbadh.schemas import EventType, ScriptedChange
 from jahbadh.simulator import simulate_match
-from jahbadh.simulator.storyline import DEMO_STORYLINE
+from jahbadh.simulator.formations import FORMATIONS, slots_for
+from jahbadh.simulator.storyline import DEMO_STORYLINE, remap_order
 
 SWITCH = [ScriptedChange(minute=60, team_id="RMU", kind="formation", value="3-4-3")]
 
@@ -55,6 +56,38 @@ def test_press_change_event(demo):
     tc = demo.events_of(EventType.TACTIC_CHANGE, team_id="NBR")
     assert len(tc) == 1 and tc[0].t == 4200
     assert tc[0].detail == {"press_height_from": 0.7, "press_height_to": 0.85}
+
+
+def test_remap_moves_players_line_by_line():
+    # 4-3-3 -> 3-4-3: the new back three must come from the old back four, a full-back steps up to
+    # wing-back, and the front three stays the front three. Slot indices: 1-4 back four, 5-7 midfield, 8-10 front.
+    order = remap_order("4-3-3", "3-4-3")
+    assert order[0] == 0 and sorted(order) == list(range(11))
+    assert set(order[1:4]) <= {1, 2, 3, 4}
+    assert set(order[8:11]) == {8, 9, 10}
+
+
+def test_remap_never_pushes_a_deeper_player_ahead_of_a_more_advanced_one():
+    names = list(FORMATIONS)
+    for old in names:
+        for new in names:
+            old_ax = [ax for _, ax, _ in slots_for(old)]
+            new_ax = [ax for _, ax, _ in slots_for(new)]
+            order = remap_order(old, new)
+            for i in range(1, 11):
+                for j in range(1, 11):
+                    if new_ax[i] < new_ax[j] - 10:  # slot i is clearly behind slot j
+                        assert old_ax[order[i]] <= old_ax[order[j]], (old, new, i, j)
+
+
+def test_switch_keeps_defenders_at_the_back(switched):
+    m = switched
+    roles = {p.id: p.role for p in m.meta.away.players}
+    tr = m.tracking[(m.tracking.team_id == "RMU") & m.tracking.t.between(3660, 5399)]
+    ax = (105 - tr.groupby("entity_id").x.mean()).drop([p for p in roles if roles[p] == "GK"], errors="ignore")
+    deepest, front = ax.nsmallest(3).index, ax.nlargest(3).index
+    assert all(roles[p] in ("CB", "FB") for p in deepest)
+    assert not any(roles[p] in ("CB", "FB") for p in front)
 
 
 def test_bad_substitution_raises():

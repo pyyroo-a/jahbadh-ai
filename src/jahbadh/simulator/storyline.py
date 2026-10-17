@@ -9,7 +9,6 @@ shirt numbers are random.
 
 from typing import Callable
 
-import numpy as np
 
 from jahbadh.pitch import LENGTH, WIDTH
 from jahbadh.schemas import Event, EventType, ScriptedChange, Team
@@ -43,15 +42,38 @@ def apply_due_changes(t: int, changes: list[ScriptedChange], teams: dict[str, Te
             _substitute(t, change, state, match_team[change.team_id], emit)
 
 
+LINE_GAP_M = 8.0  # slots more than this far apart in depth belong to different lines
+
+
+def remap_order(old: str, new: str) -> list[int]:
+    """order[i] = the old slot index whose player takes new slot i.
+
+    Players move line by line: the new formation's slots are grouped into lines by depth, the
+    deepest old players fill the back line first (a full-back who doesn't fit becomes a wing-back),
+    and within each line players keep their left-to-right order. The GK always stays in goal.
+    """
+    old_slots, new_slots = slots_for(old), slots_for(new)
+    # old outfield players from deepest to most advanced; ties go to the more central player
+    players = sorted(range(1, 11), key=lambda i: (old_slots[i][1], abs(old_slots[i][2] - 34), i))
+    by_depth = sorted(range(1, 11), key=lambda i: new_slots[i][1])
+    lines: list[list[int]] = [[by_depth[0]]]
+    for i in by_depth[1:]:
+        if new_slots[i][1] - new_slots[lines[-1][-1]][1] > LINE_GAP_M:
+            lines.append([])
+        lines[-1].append(i)
+
+    order = [0] * 11
+    for line in lines:
+        movers, players = players[:len(line)], players[len(line):]
+        left_to_right = sorted(movers, key=lambda i: -old_slots[i][2])  # high y = left
+        for slot, player in zip(sorted(line, key=lambda i: -new_slots[i][2]), left_to_right):
+            order[slot] = player
+    return order
+
+
 def _change_formation(t: int, change: ScriptedChange, state: TeamState, emit: Emit) -> None:
     old, new = state.formation, str(change.value)
-    old_slots = np.array([(ax, y) for _, ax, y in slots_for(old)])
-    new_slots = np.array([(ax, y) for _, ax, y in slots_for(new)])
-    order = [0]  # GK keeps slot 0; others greedily take the nearest new slot
-    remaining = list(range(1, 11))
-    for slot in new_slots[1:]:
-        dists = [np.hypot(*(old_slots[i] - slot)) for i in remaining]
-        order.append(remaining.pop(int(np.argmin(dists))))
+    order = remap_order(old, new)
     state.on_pitch = [state.on_pitch[i] for i in order]
     state.pos = state.pos[order].copy()
     state.formation = new

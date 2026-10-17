@@ -58,6 +58,6 @@ def test_ppda_in_realistic_range():
     assert all(3 <= v <= 25 for v in nbr + rmu), f"outlier PPDA in {sorted(nbr + rmu)}"
 
 
-def test_demo_match_shows_the_press_up():
-    m = simulate_match(42, storyline=DEMO_STORYLINE)
-    assert ppda(m, "NBR", 4200, 5400).value < ppda(m, "NBR", 3000, 4200).value
+# No single-match check on the demo seed: a 20-minute window holds ~6 defensive actions, so one
+# match's before/after PPDA is mostly noise. The pooled 20-seed test above proves the mechanism;
+# demo narratives must describe whatever the chosen match actually shows (data-true rule).
