@@ -1,6 +1,11 @@
-# Jahbadh (جهبذ)
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/brand/jahbadh-lockup-dark.png">
+    <img src="docs/brand/jahbadh-lockup-light.png" alt="Jahbadh (جهبذ)" width="560">
+  </picture>
+</p>
 
-**AI match intelligence you can actually trust.**
+<p align="center"><b>AI agents that explain the game and prove every word.</b></p>
 
 Jahbadh is my entry for the Microsoft x Premier League *Inside the Game* developer hackathon (challenge: Synthetic Match Insights Engine for Premier League Studio). It's a match desk run by AI agents that watches a synthetic football match and explains it: live commentary, tactical breakdowns, heatmaps and recaps. The twist is that every claim has to be backed by the data, and you can click any sentence to see the events and numbers behind it.
 
