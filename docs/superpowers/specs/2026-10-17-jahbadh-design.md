@@ -174,7 +174,7 @@ The results go in the README. Something like "the Referee caught 47 of 50 plante
 
 ## Tech stack
 
-- **Language:** Python 3.12
+- **Language:** Python 3.13 (what I have installed)
 - **Sim + analytics:** numpy, pandas, pydantic
 - **Storage:** Parquet + SQLite locally. I'll only add a managed Azure store if I need one.
 - **Models:** Microsoft Foundry deployments, a small cheap model (gpt-4o-mini class) for most agents
