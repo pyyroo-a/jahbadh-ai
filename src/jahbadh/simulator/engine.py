@@ -28,14 +28,16 @@ HALF_SECONDS = 2700
 ACT_BASE, ACT_TEMPO = 0.30, 0.25
 CARRY_PROB = 0.15
 SHOT_ZONE_AX = 75.0
-SHOT_BASE, SHOT_XG_MULT, SHOT_PROB_CAP = 0.10, 0.4, 0.25  # base term makes players shoot from range too
+SHOT_BASE, SHOT_XG_MULT, SHOT_PROB_CAP = 0.085, 0.3, 0.25  # base term makes players shoot from range too
 PASS_BASE, PASS_LENGTH_PEN, PASS_PRESSURE_PEN, PASS_FINAL_THIRD_PEN = 0.97, 0.14, 0.05, 0.08
 PASS_DISTANCE_SCALE = 20.0
-INTERCEPT_SHARE = 0.70
+# A misplaced pass is cut out by a defender (INTERCEPTION), picked up as a loose ball by the
+# opponent (possession changes; the failed PASS is the evidence), or goes out of play.
+INTERCEPT_SHARE, LOOSE_BALL_SHARE = 0.25, 0.45
 PRESSURE_RADIUS = 2.5
 PRESSURE_BASE, PRESSURE_PRESS = 0.25, 0.40
 PRESS_ZONE_AX = 63.0     # pressing zone: the ball carrier's own defensive 60% (matches the PPDA zone)
-TACKLE_PROB, TACKLE_WIN = 0.06, 0.5
+TACKLE_PROB, TACKLE_WIN = 0.035, 0.5
 FOUL_PROB, CARD_PROB = 0.02, 0.12
 GK_CATCH_SHARE = 0.6
 DRIBBLE_MAX = 0.5
@@ -226,10 +228,13 @@ class _Engine:
 
         self.emit(t, team_id, pid, EventType.PASS, bx, by, end_x=rx, end_y=ry, outcome=False)
         opp = self.opp(team_id)
-        if self.rng.random() < INTERCEPT_SHARE:
+        roll = self.rng.random()
+        if roll < INTERCEPT_SHARE + LOOSE_BALL_SHARE:
             idx, _ = self.nearest(opp, np.array([rx, ry]))
-            ix, iy = self.states[opp].pos[idx]
-            self.emit(t, opp, self.states[opp].on_pitch[idx], EventType.INTERCEPTION, ix, iy, outcome=True)
+            # an intense press forces more balls to be actively cut out
+            if roll < min(INTERCEPT_SHARE * self.press_intensity(opp), INTERCEPT_SHARE + LOOSE_BALL_SHARE):
+                ix, iy = self.states[opp].pos[idx]
+                self.emit(t, opp, self.states[opp].on_pitch[idx], EventType.INTERCEPTION, ix, iy, outcome=True)
             self.give_ball(opp, idx)
         else:
             self.s.ball = np.array(clamp(rx, ry))

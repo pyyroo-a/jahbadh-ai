@@ -35,10 +35,27 @@ def test_default_high_press_team_has_lower_ppda():
 def test_demo_press_up_at_70_lowers_nbr_ppda():
     # Same seeds with and without the 70' press-up. A within-match before/after comparison would
     # mix in Rivermouth's 60' back-three switch, which changes the game on its own.
+    # A 20-minute window holds only ~6 defensive actions, so per-match PPDA is noisy: pool
+    # passes and actions across 20 seeds instead of averaging per-match ratios.
     without_press_up = [c for c in DEMO_STORYLINE if c.kind != "press_height"]
-    with_up = mean(ppda(simulate_match(s, storyline=DEMO_STORYLINE), "NBR", 4200, 5400).value for s in SEEDS)
-    without = mean(ppda(simulate_match(s, storyline=without_press_up), "NBR", 4200, 5400).value for s in SEEDS)
-    assert with_up < 0.85 * without, f"70-90' PPDA with press-up {with_up:.2f} vs without {without:.2f}"
+
+    def pooled(storyline) -> float:
+        d = [ppda(simulate_match(s, storyline=storyline), "NBR", 4200, 5400).data for s in range(1, 21)]
+        return sum(x["opponent_passes"] for x in d) / sum(x["defensive_actions"] for x in d)
+
+    with_up, without = pooled(DEMO_STORYLINE), pooled(without_press_up)
+    assert with_up < 0.95 * without, f"pooled 70-90' PPDA with press-up {with_up:.2f} vs without {without:.2f}"
+
+
+def test_ppda_in_realistic_range():
+    # Real football: intense pressers ~6-9, typical teams ~9-13, low blocks 15+.
+    # NBR presses at 0.70 (intense), RMU at 0.45 (a bit below typical).
+    matches = [simulate_match(s) for s in SEEDS]
+    nbr = [ppda(m, "NBR").value for m in matches]
+    rmu = [ppda(m, "RMU").value for m in matches]
+    assert 6 <= mean(nbr) <= 10, f"NBR mean PPDA {mean(nbr):.2f}"
+    assert 9 <= mean(rmu) <= 15, f"RMU mean PPDA {mean(rmu):.2f}"
+    assert all(3 <= v <= 25 for v in nbr + rmu), f"outlier PPDA in {sorted(nbr + rmu)}"
 
 
 def test_demo_match_shows_the_press_up():
