@@ -16,6 +16,8 @@ type Props = {
   mode: Mode;
   heatmap: Metric | null;          // the followed player's heatmap so far
   children?: ReactNode;            // the follow panel or the single-metric focus
+  overlayControls?: ReactNode;     // the broadcast overlay switch
+  onPitch?: ReactNode;             // drawn over the pitch: the overlay's lower-thirds
 };
 
 const ppda = (v: number | null | undefined) => (typeof v === "number" ? v.toFixed(1) : "no data");
@@ -30,7 +32,7 @@ function overviewTiles(info: MatchInfo, state: MatchState | null, mode: Mode): T
   return [...tiles, { key: "xg", value: xg, label: "xG", sub: `${info.home.id} - ${info.away.id}, so far` }];
 }
 
-export default function TacticalView({ info, state, selected, eventsById, mode, heatmap, children }: Props) {
+export default function TacticalView({ info, state, selected, eventsById, mode, heatmap, children, overlayControls, onPitch }: Props) {
   let layers: Layer[];
   let tiles: Tile[];
   let title = "Tactical view";
@@ -49,9 +51,12 @@ export default function TacticalView({ info, state, selected, eventsById, mode, 
   }
   return (
     <section className="column tactical">
-      <h2>{title}</h2>
+      <div className="column-head"><h2>{title}</h2>{overlayControls}</div>
       {children}
-      <Pitch info={info} layers={layers} arrows={drawn.arrows} points={drawn.points} />
+      <div className="pitch-wrap">
+        <Pitch info={info} layers={layers} arrows={drawn.arrows} points={drawn.points} />
+        {onPitch}
+      </div>
       <div className="note">{info.home.name} attack left to right.</div>
       {!selected && <MomentumBar info={info} momentum={state?.momentum ?? null} />}
       <MetricTiles tiles={tiles} />

@@ -9,12 +9,14 @@ import FollowPanel from "./components/FollowPanel";
 import HighlightsStrip from "./components/HighlightsStrip";
 import MetricFocus from "./components/MetricFocus";
 import ModeBar from "./components/ModeBar";
+import OverlayPreview, { LowerThirds } from "./components/OverlayPreview";
 import RecapPanel from "./components/RecapPanel";
 import TacticalView from "./components/TacticalView";
 import TopBar from "./components/TopBar";
 import { hasCombo, initialDesk, reduce, replaySkip } from "./state/desk";
 import type { Selection } from "./state/evidence";
 import { highlights } from "./state/highlights";
+import { activeCues, tickingClock } from "./state/overlay";
 import { claimTags, inFocus, type Mode } from "./state/personal";
 
 export default function App() {
@@ -31,6 +33,8 @@ export default function App() {
   const [notice, setNotice] = useState<string | null>(null);
   const [liveNotice, setLiveNotice] = useState<string | null>(null);
   const [liveRemaining, setLiveRemaining] = useState(0);
+  const [overlayOn, setOverlayOn] = useState(false);
+  const [heardAt, setHeardAt] = useState(0);              // real time of the last stream message
 
   useEffect(() => {
     getConfig()
@@ -47,12 +51,22 @@ export default function App() {
   useEffect(() => {               // one stream at a time; a new source starts over from its match message
     if (!source) return;
     const url = source.kind === "replay" ? replayUrl(source.matchId, source.speed, source.fromT) : liveUrl(source.runId);
-    return openStream(url, (m) => { setProblem(null); dispatch(m); }, () => setProblem("Reconnecting to the desk..."));
+    return openStream(url, (m) => { setProblem(null); setHeardAt(performance.now()); dispatch(m); },
+      () => setProblem("Reconnecting to the desk..."));
   }, [source]);
 
   const liveRunId = source?.kind === "live" ? source.runId : null;
   const { info, state, events } = desk;
-  const clock = Math.max(events.at(-1)?.t ?? 0, state?.t ?? 0);
+  const clock = desk.clock;
+
+  // The overlay keeps time between messages like a broadcast clock, so a cue leaves the screen on time.
+  const [now, setNow] = useState(0);
+  useEffect(() => {
+    if (!overlayOn) return;
+    const id = setInterval(() => setNow(performance.now()), 250);
+    return () => clearInterval(id);
+  }, [overlayOn]);
+  const onAir = tickingClock(clock, heardAt, Math.max(now, heardAt), info?.speed ?? 6, !desk.ended);
   const minute = events.length ? events[events.length - 1].minute : state?.minute ?? 1;
   const choices = useMemo(() => config?.metric_choices ?? [], [config]);
 
@@ -149,7 +163,10 @@ export default function App() {
           scrollKey={selection ? `${selection.momentId}|${selection.claimId}` : null} />
         {info ? (
           <TacticalView info={info} state={state} selected={selected} eventsById={desk.eventsById} mode={mode}
-            heatmap={mode.kind === "player" ? follow?.heatmap ?? null : null}>
+            heatmap={mode.kind === "player" ? follow?.heatmap ?? null : null}
+            overlayControls={<OverlayPreview on={overlayOn} onToggle={() => setOverlayOn(!overlayOn)}
+              feedUrl={liveRunId ? `/api/live/${liveRunId}/overlay` : `/api/replay/${info.match_id}/overlay`} />}
+            onPitch={overlayOn && <LowerThirds cues={activeCues(desk.cues, onAir)} language={language} info={info} />}>
             {mode.kind === "player" && (
               <FollowPanel key={mode.playerId} info={info} playerId={mode.playerId} clock={clock} runId={liveRunId}
                 items={desk.items} persona={persona} language={language} onFollow={setFollow} />

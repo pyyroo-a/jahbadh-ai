@@ -49,7 +49,7 @@ export default function FollowPanel({ info, playerId, clock, runId, items, perso
         <div className="stat"><b>{num(follow?.passing.value, 2)}</b>Pass difficulty</div>
         <div className="stat"><b>{num(follow?.impact.data.touches, 0)}</b>Touches</div>
       </div>
-      <div className="note">Distance and speed come from the simulated tracking data.</div>
+      <div className="note">Distance and speed come from the simulated tracking data, and pass difficulty from the simulator's pass odds.</div>
       {spotlights.flatMap((i) => i.claims.map((c) => {
         const shown = claimText(i, c.id, persona, language);
         return <p key={c.id} className="spotlight-line" dir={shown.dir}>{shown.text}</p>;

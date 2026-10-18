@@ -2,7 +2,7 @@
 // computes a football number itself.
 
 import type {
-  EventLine, FeedItem, Language, MatchInfo, MatchState, Moment, MomentFailure, Persona, Rejection, RenderedClaim,
+  EventLine, FeedItem, Language, MatchInfo, MatchState, Moment, MomentFailure, OverlayCue, Persona, Rejection, RenderedClaim,
   StreamEnd, StreamMessage,
 } from "../api/types";
 
@@ -15,12 +15,14 @@ export type DeskState = {
   thinking: Moment[];
   items: FeedItem[];
   failures: MomentFailure[];
+  cues: OverlayCue[];                 // for the broadcast overlay preview
+  clock: number;                      // the latest match second any message has reached
   ended: StreamEnd | null;
   lastId: number;
 };
 
 export const initialDesk: DeskState = {
-  info: null, events: [], eventsById: {}, state: null, states: [], thinking: [], items: [], failures: [], ended: null, lastId: -1,
+  info: null, events: [], eventsById: {}, state: null, states: [], thinking: [], items: [], failures: [], cues: [], clock: 0, ended: null, lastId: -1,
 };
 
 const renderKey = (r: RenderedClaim) => `${r.claim_id}|${r.persona}|${r.language}`;
@@ -37,11 +39,12 @@ export function reduce(s: DeskState, m: StreamMessage): DeskState {
   const next = { ...s, lastId: m.id };
   switch (m.kind) {
     case "event":
-      return { ...next, events: [...s.events, m.data], eventsById: { ...s.eventsById, [m.data.id]: m.data } };
+      return { ...next, events: [...s.events, m.data], eventsById: { ...s.eventsById, [m.data.id]: m.data },
+        clock: Math.max(s.clock, m.data.t) };
     case "state":
-      return { ...next, state: m.data, states: [...s.states, m.data] };
+      return { ...next, state: m.data, states: [...s.states, m.data], clock: Math.max(s.clock, m.data.t) };
     case "thinking":
-      return { ...next, thinking: [...s.thinking.filter((t) => t.id !== m.data.id), m.data] };
+      return { ...next, thinking: [...s.thinking.filter((t) => t.id !== m.data.id), m.data], clock: Math.max(s.clock, m.data.t) };
     case "feed": {
       const others = s.items.filter((i) => i.moment.id !== m.data.moment.id);
       const items = [...others, m.data].sort((a, b) => a.moment.t - b.moment.t);
@@ -59,7 +62,7 @@ export function reduce(s: DeskState, m: StreamMessage): DeskState {
     case "end":
       return { ...next, ended: m.data, thinking: [] };
     case "cue":
-      return next;                           // the overlay preview reads cues on its own (Task 12a)
+      return { ...next, cues: [...s.cues, m.data], clock: Math.max(s.clock, m.data.match_time) };
   }
 }
 

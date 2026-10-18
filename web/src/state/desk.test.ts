@@ -84,10 +84,26 @@ describe("reduce", () => {
     expect(s.items[0].renders).toEqual([r("casual", "es", "texto")]);
   });
 
-  it("moves past cues without storing them in the desk", () => {
-    const s = reduce(withMatch(), msg(1, "cue", { id: "event-21" }));
+  it("keeps cues for the overlay preview, once each", () => {
+    let s = reduce(withMatch(), msg(1, "cue", { id: "event-21" }));
+    s = reduce(s, msg(1, "cue", { id: "event-21" }));
     expect(s.lastId).toBe(1);
     expect(s.items).toEqual([]);
+    expect(s.cues.map((c) => c.id)).toEqual(["event-21"]);
+  });
+});
+
+describe("clock", () => {
+  it("follows every timed message, not just events", () => {
+    let s = reduce(withMatch(), msg(1, "event", ev(2, 20)));
+    expect(s.clock).toBe(20);
+    s = reduce(s, msg(2, "cue", { id: "claim-1", match_time: 45 }));
+    expect(s.clock).toBe(45);
+    s = reduce(s, msg(3, "thinking", moment("goal-885", 50)));
+    s = reduce(s, msg(4, "state", { t: 60, minute: 2 }));
+    expect(s.clock).toBe(60);
+    s = reduce(s, msg(5, "event", ev(3, 58)));                // a late event never winds the clock back
+    expect(s.clock).toBe(60);
   });
 });
 

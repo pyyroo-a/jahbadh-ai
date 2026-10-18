@@ -48,6 +48,7 @@ export default function MetricFocus({ info, choice, states, pinned, persona, lan
       {choice.key === "rhythm" && states.at(-1)?.rhythm && (
         <div className="note">Last 10 minutes: {String(states.at(-1)?.rhythm?.data.label)}</div>
       )}
+      {choice.key === "pass_difficulty" && <div className="note">Pass difficulty comes from the simulator's pass odds.</div>}
       {!pinned.length && <div className="note">No desk line cites {choice.label} yet.</div>}
       {pinned.map(({ item, claimId }) => {
         const shown = claimText(item, claimId, persona, language);

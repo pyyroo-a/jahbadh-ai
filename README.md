@@ -123,6 +123,48 @@ npm --prefix web run dev
 
 and open http://localhost:5173. The web tests run with `npm --prefix web run test`.
 
+## Overlay feed for broadcast graphics
+
+Alongside the desk, every match has a timed cue feed that a broadcast graphics system could draw over the pictures: goals, cards, substitutions, formation and press changes, big or fast shots, new top speeds, distance milestones, changes in the game rhythm, and the Referee-approved desk lines. Each cue says when to show it, for how long, what to say in English, Arabic and Spanish, and which events and metrics back it up. No model is called to make them.
+
+- `GET /api/overlay/schema` is the JSON schema for a cue.
+- `GET /api/replay/match-042/overlay` gives every cue for the showcase match as a list.
+- `GET /api/replay/match-042/overlay/stream?speed=6` streams only the cues, on time, over Server-Sent Events.
+- In live mode, `GET /api/live/{run_id}/overlay` and `/overlay/stream` do the same, and never run past the match clock.
+
+Here's a real cue from the showcase match:
+
+```json
+{
+  "id": "event-213",
+  "match_time": 885.0,
+  "minute": 15,
+  "type": "goal",
+  "team_id": "NBR",
+  "player_id": "NBR-72",
+  "value": null,
+  "unit": null,
+  "text": {
+    "en": "GOAL · Kian Jansen (Northbridge FC)",
+    "ar": "هدف · Kian Jansen (Northbridge FC)",
+    "es": "GOL · Kian Jansen (Northbridge FC)"
+  },
+  "duration_s": 12.0,
+  "event_ids": [212, 213],
+  "metric_ids": [],
+  "source": "event",
+  "synthetic": false,
+  "precomputed": true
+}
+```
+
+In the desk, switch on **Broadcast overlay preview** above the pitch to see the cues as lower-thirds while the match plays.
+
+## What's not in scope
+
+- **No video auto-eventing.** There's no video feed anywhere in Jahbadh. Every event comes from the synthetic match simulator, so nothing is detected from pictures.
+- **Some numbers come from the simulator's own models, and they're labelled that way.** Shot speed, the pass success odds (and the pass difficulty built from them) and everything tracking-based (distance, top speed, sprint records) are synthetic. Overlay cues built on them carry `"synthetic": true` and show a *Simulated* tag in the preview, and the desk notes it wherever it shows running numbers or pass difficulty, so nobody mistakes them for measured values.
+
 ## How the desk checks itself
 
 Every claim carries its evidence: the metric ids it relies on, the event ids, and each number exactly as it is written. The Referee checks it in two layers.
