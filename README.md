@@ -11,7 +11,7 @@ Jahbadh is my entry for the Microsoft x Premier League *Inside the Game* develop
 
 *Jahbadh* is an Arabic word for someone who truly masters a craft. Here that means understanding simulation, tactics and writing all at once.
 
-> 🚧 Work in progress. The data foundation (simulator + tactical analytics) and the agent desk are done. The live desk UI and the Azure deployment are coming next.
+> 🚧 Work in progress. The simulator, the tactical analytics, the agent desk and the live desk UI are done. The evaluation with planted false claims and the Azure deployment are coming next.
 
 ## What's working so far
 
@@ -87,8 +87,41 @@ It writes `desk.json` next to the match, with every approved claim, every person
 To check the real Azure services (a few cents):
 
 ```bash
-$env:JAHBADH_LIVE=1; .venv\Scripts\python -m pytest testsgents	est_live.py -m live -q
+$env:JAHBADH_LIVE=1; .venv\Scripts\python -m pytest tests\agents\test_live.py -m live -q
 ```
+
+## Run the desk
+
+The desk is a FastAPI server that streams the match and the agents' feed over Server-Sent Events, plus a React app that shows it all: the event stream, the tactical pitch and the verified feed, where you can click any sentence to see its evidence. You need Python 3.13 and Node 22.
+
+```bash
+.venv\Scripts\pip install -e .[dev]
+npm ci --prefix web
+npm --prefix web run build
+.venv\Scripts\python -m uvicorn jahbadh.api.app:create_app --factory --port 8000
+```
+
+Then open http://127.0.0.1:8000. The server serves the built app, and the desk starts playing straight away.
+
+**Replay is the default, and it's real.** It plays the demo match with a desk run that was precomputed by the very same agents (`data/showcase/match-042/desk.json`, never edited by hand). It's free and instant, and you can change the speed, skip to the next moment, switch persona and language, pick a favourite club, follow a player or track one metric, and open the full-time recap.
+
+**Live mode** plays a fresh match while the agents really work on each key moment. It calls the model, so it's off unless you switch it on, and it has a daily limit shared by everyone. Add these to `.env` (see `.env.example`):
+
+```bash
+JAHBADH_LIVE_MODE=on
+JAHBADH_LIVE_PER_DAY=3
+```
+
+Each fresh match and each requested spotlight counts as one live run. The count is kept in `data/state/live.json`, so a restart doesn't reset it.
+
+**While working on the UI**, run the API and the Vite dev server side by side. Vite forwards `/api` to port 8000:
+
+```bash
+.venv\Scripts\python -m uvicorn jahbadh.api.app:create_app --factory --port 8000
+npm --prefix web run dev
+```
+
+and open http://localhost:5173. The web tests run with `npm --prefix web run test`.
 
 ## How the desk checks itself
 
@@ -106,4 +139,4 @@ Everything is synthetic and football-realistic. The schema and coordinate system
 ## Project docs
 
 - Design: `docs/superpowers/specs/2026-10-17-jahbadh-design.md`
-- Build plans: `docs/superpowers/plans/2026-10-17-plan-1-data-foundation.md` and `docs/superpowers/plans/2026-10-17-plan-2-agents.md`
+- Build plans: `docs/superpowers/plans/2026-10-17-plan-1-data-foundation.md`, `docs/superpowers/plans/2026-10-17-plan-2-agents.md` and `docs/superpowers/plans/2026-10-18-plan-3-desk.md`

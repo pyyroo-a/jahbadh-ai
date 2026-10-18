@@ -40,7 +40,6 @@ export default function TopBar({ info, state, minute, persona, language, onPerso
         <Pills options={PERSONAS} value={persona} onPick={onPersona} label="Persona" />
         <Pills options={LANGUAGES} value={language} onPick={onLanguage} label="Language" />
       </div>
-      {info && <span className="badge">{info.precomputed ? "Replay · precomputed by the real desk" : "Live"}</span>}
     </header>
   );
 }

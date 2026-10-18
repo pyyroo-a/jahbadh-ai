@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type {
   EventLine, FeedItem, MatchInfo, Moment, Rejection, RenderedClaim, StreamMessage, Team,
 } from "../api/types";
-import { claimText, hasCombo, initialDesk, nextMomentTime, reduce, rejectionsFor } from "./desk";
+import { claimText, hasCombo, initialDesk, nextMomentTime, reduce, rejectionsFor, replaySkip } from "./desk";
 
 const team = (id: string, name: string): Team => ({
   id, name, formation: "4-3-3", players: [],
@@ -128,5 +128,16 @@ describe("hasCombo", () => {
     expect(hasCombo(two, "casual", "es")).toBe(true);
     expect(hasCombo(two, "casual", "ar")).toBe(false);
     expect(hasCombo(item("empty", 1, { claims: [] }), "fantasy", "ar")).toBe(true);
+  });
+});
+
+describe("replaySkip", () => {
+  it("lands just before the next moment, and the next skip moves on even if the clock lags", () => {
+    const at = { ...info, moment_times: [25, 295, 885] };
+    expect(replaySkip(at, 0, 0)).toEqual({ fromT: 20, seen: 25 });
+    expect(replaySkip(at, 18, 25)).toEqual({ fromT: 290, seen: 295 });     // clock 18 is behind the 20 we asked for
+    expect(replaySkip(at, 300, 295)).toEqual({ fromT: 880, seen: 885 });
+    expect(replaySkip(at, 880, 885)).toBeNull();
+    expect(replaySkip({ ...info, moment_times: [3] }, 0, 0)).toEqual({ fromT: 0, seen: 3 });
   });
 });

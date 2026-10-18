@@ -94,3 +94,12 @@ export function nextMomentTime(info: MatchInfo, clock: number): number | null {
   const later = info.moment_times.filter((t) => t > clock);
   return later.length ? Math.min(...later) : null;
 }
+
+export const SKIP_LEAD_S = 5;     // replay's skip lands just before the moment, so its events play first
+
+/** Where replay's "Skip to next moment" seeks. `seen` is the last moment already jumped to: the clock comes from
+ *  the last event received, which can sit a little before the seek point, so it alone would find that moment again. */
+export function replaySkip(info: MatchInfo, clock: number, seen: number): { fromT: number; seen: number } | null {
+  const next = nextMomentTime(info, Math.max(clock, seen));
+  return next === null ? null : { fromT: Math.max(0, next - SKIP_LEAD_S), seen: next };
+}
