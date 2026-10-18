@@ -1,0 +1,118 @@
+import { describe, expect, it } from "vitest";
+import type {
+  EventLine, FeedItem, MatchInfo, Moment, Rejection, RenderedClaim, StreamMessage, Team,
+} from "../api/types";
+import { claimText, initialDesk, nextMomentTime, reduce, rejectionsFor } from "./desk";
+
+const team = (id: string, name: string): Team => ({
+  id, name, formation: "4-3-3", players: [],
+  tactics: { press_height: 0.5, width: 0.5, tempo: 0.5, directness: 0.5 },
+});
+const info: MatchInfo = {
+  match_id: "match-042", mode: "replay", home: team("NBR", "Northbridge FC"), away: team("RMU", "Rivermouth United"),
+  speed: 6, precomputed: true, model: "gpt-5-mini", created: "2026-10-18", moment_times: [25, 295, 885],
+};
+const msg = (id: number, kind: StreamMessage["kind"], data: unknown): StreamMessage =>
+  ({ id, kind, data }) as StreamMessage;
+const ev = (id: number, t = id): EventLine => ({
+  id, t, minute: Math.floor(t / 60) + 1, type: "PASS", team_id: "NBR", player_id: "NBR-9", related_player_id: null,
+  x: 50, y: 30, end_x: 60, end_y: 30, outcome: true, xg: null, lines: { en: "pass", ar: "تمريرة", es: "pase" },
+});
+const moment = (id: string, t = 885): Moment =>
+  ({ id, kind: "goal", t, team_id: "NBR", player_id: null, event_ids: [], label: `${id} label` });
+const item = (id: string, t = 885, extra: Partial<FeedItem> = {}): FeedItem => ({
+  moment: moment(id, t), metrics: [], stats: {}, latency_s: 1, renders: [], rejections: [],
+  claims: [{ id: "c1", text: "the claim's own text", metric_ids: [], event_ids: [], figures: [] }], ...extra,
+});
+const r = (persona: RenderedClaim["persona"], language: RenderedClaim["language"], text: string,
+  note: string | null = null): RenderedClaim => ({ claim_id: "c1", persona, language, text, note });
+const itemWith = (renders: RenderedClaim[]) => item("goal-885", 885, { renders });
+const withMatch = () => reduce(initialDesk, msg(0, "match", info));
+
+describe("reduce", () => {
+  it("ignores messages it has already seen", () => {
+    let s = reduce(initialDesk, msg(0, "match", info));
+    s = reduce(s, msg(1, "event", ev(2)));
+    s = reduce(s, msg(1, "event", ev(2)));
+    expect(s.events).toHaveLength(1);
+    expect(s.eventsById[2].lines.en).toBe("pass");
+    expect(s.lastId).toBe(1);
+  });
+
+  it("starts over on a new match message", () => {
+    let s = reduce(withMatch(), msg(1, "event", ev(2)));
+    s = reduce(s, msg(0, "match", { ...info, match_id: "live-7" }));
+    expect(s.events).toEqual([]);
+    expect(s.info?.match_id).toBe("live-7");
+    expect(s.lastId).toBe(0);
+  });
+
+  it("swaps thinking for the published item", () => {
+    let s = reduce(withMatch(), msg(5, "thinking", moment("goal-885")));
+    expect(s.thinking.map((m) => m.id)).toEqual(["goal-885"]);
+    s = reduce(s, msg(6, "feed", item("goal-885")));
+    expect(s.thinking).toEqual([]);
+    expect(s.items.map((i) => i.moment.id)).toEqual(["goal-885"]);
+  });
+
+  it("keeps items in match order and clears thinking on failure", () => {
+    let s = reduce(withMatch(), msg(1, "thinking", moment("card-25", 25)));
+    s = reduce(s, msg(2, "thinking", moment("goal-885")));
+    s = reduce(s, msg(3, "feed", item("goal-885")));
+    s = reduce(s, msg(4, "failure", { moment_id: "card-25", error: "RuntimeError: 429" }));
+    s = reduce(s, msg(5, "feed", item("card-295", 295)));
+    expect(s.items.map((i) => i.moment.id)).toEqual(["card-295", "goal-885"]);
+    expect(s.failures.map((f) => f.moment_id)).toEqual(["card-25"]);
+    expect(s.thinking).toEqual([]);
+  });
+
+  it("takes the latest state and ends by clearing thinking", () => {
+    let s = reduce(withMatch(), msg(1, "state", { t: 60, minute: 2 }));
+    s = reduce(s, msg(2, "thinking", moment("full_time-5400", 5400)));
+    s = reduce(s, msg(3, "end", { reason: "cancelled" }));
+    expect(s.state?.minute).toBe(2);
+    expect(s.thinking).toEqual([]);
+    expect(s.ended).toEqual({ reason: "cancelled" });
+  });
+
+  it("merges late renders once", () => {
+    let s = reduce(withMatch(), msg(1, "feed", item("goal-885")));
+    const update = { moment_id: "goal-885", renders: [r("casual", "es", "texto")], rejections: [] };
+    s = reduce(s, msg(2, "renders", update));
+    s = reduce(s, msg(3, "renders", update));
+    expect(s.items[0].renders).toEqual([r("casual", "es", "texto")]);
+  });
+
+  it("moves past cues without storing them in the desk", () => {
+    const s = reduce(withMatch(), msg(1, "cue", { id: "event-21" }));
+    expect(s.lastId).toBe(1);
+    expect(s.items).toEqual([]);
+  });
+});
+
+describe("what to show", () => {
+  it("claimText falls back and picks the direction", () => {
+    expect(claimText(itemWith([r("pundit", "ar", "نص")]), "c1", "pundit", "ar")).toEqual({ text: "نص", note: null, dir: "rtl" });
+    expect(claimText(itemWith([r("pundit", "ar", "English", "english fallback")]), "c1", "pundit", "ar").dir).toBe("ltr");
+    expect(claimText(itemWith([r("casual", "en", "Casual words")]), "c1", "casual", "es"))
+      .toEqual({ text: "Casual words", note: null, dir: "ltr" });
+    expect(claimText(itemWith([]), "c1", "casual", "es").text).toBe("the claim's own text");
+    expect(claimText(itemWith([r("fantasy", "en", "Plain", "persona fallback")]), "c1", "fantasy", "en").note)
+      .toBe("persona fallback");
+  });
+
+  it("lists the shared rejections plus this combo's own", () => {
+    const rej = (layer: Rejection["layer"], persona: Rejection["persona"], language: Rejection["language"]): Rejection =>
+      ({ claim_id: "c1", text: layer, layer, reasons: [], attempt: 1, persona, language });
+    const all = [rej("deterministic", null, null), rej("semantic", null, null), rej("persona", "casual", null),
+      rej("persona", "fantasy", null), rej("localization", "casual", "ar"), rej("localization", "casual", "es")];
+    const got = rejectionsFor(item("goal-885", 885, { rejections: all }), "casual", "ar");
+    expect(got).toEqual([all[0], all[1], all[2], all[4]]);
+  });
+
+  it("finds the next moment after the clock", () => {
+    expect(nextMomentTime({ ...info, moment_times: [25, 295, 885] }, 300)).toBe(885);
+    expect(nextMomentTime({ ...info, moment_times: [25, 295, 885] }, 295)).toBe(885);
+    expect(nextMomentTime({ ...info, moment_times: [25] }, 300)).toBeNull();
+  });
+});
