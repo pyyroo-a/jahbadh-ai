@@ -3,6 +3,7 @@ import pytest
 from apifakes import SHOWCASE_ROOT, demo_match
 from jahbadh.agents.evidence import score_at
 from jahbadh.analytics import xg_total
+from jahbadh.api.overlay import OverlayCue, event_cues, metric_cues
 from jahbadh.api.showcase import load_showcases
 from jahbadh.api.stream import EventLine, MatchState, StreamEnd, StreamItem
 from jahbadh.api.timeline import REPLAY_DESK_LAG_S, event_line, match_state, match_timeline, replay_timeline
@@ -14,13 +15,13 @@ def test_the_timeline_holds_every_event_and_a_state_every_minute():
     assert sum(i.kind == "event" for i in tl) == len(m.events)
     assert [i.t for i in tl if i.kind == "state"] == [60.0 * k for k in range(91)]
     assert [i.t for i in tl] == sorted(i.t for i in tl)
-    assert {i.kind for i in tl} == {"event", "state"} and all(isinstance(i, StreamItem) for i in tl)
+    assert {i.kind for i in tl} == {"event", "state", "cue"} and all(isinstance(i, StreamItem) for i in tl)
 
 
 def test_events_come_before_the_state_at_the_same_second():
     tl = match_timeline(demo_match())
     at_60 = [i.kind for i in tl if i.t == 60.0]
-    assert at_60[-1] == "state" and set(at_60[:-1]) <= {"event"}
+    assert at_60[-1] == "state" and set(at_60[:-1]) <= {"event", "cue"}
 
 
 def test_kickoff_state_is_empty():
@@ -72,4 +73,31 @@ def test_event_line_payload_keys_are_the_protocol():
 
 def test_match_state_payload_keys_are_the_protocol():
     assert set(MatchState.model_fields) == {"t", "minute", "score", "xg", "momentum", "field_tilt", "ppda", "shape",
-                                            "formations"}
+                                            "formations", "rhythm", "pass_difficulty"}
+
+
+def test_cues_ride_in_the_timeline_at_their_time():
+    m = demo_match()
+    cues = [i for i in match_timeline(m) if i.kind == "cue"]
+    assert len(cues) == len(event_cues(m)) + len(metric_cues(m))
+    assert all(i.t == i.data.match_time and isinstance(i.data, OverlayCue) for i in cues)
+    assert not any(i.data.type == "claim" for i in cues)                # claims only come with the desk
+
+
+def test_state_carries_rhythm_and_pass_difficulty():
+    m = demo_match()
+    s = match_state(m, 3600)
+    assert s.rhythm.name == "game_rhythm" and s.rhythm.window == (3000.0, 3600.0)
+    assert set(s.pass_difficulty) == {"NBR", "RMU"} and all(0 < v < 1 for v in s.pass_difficulty.values())
+    kickoff = match_state(m, 0)
+    assert kickoff.rhythm is None and kickoff.pass_difficulty == {"NBR": None, "RMU": None}
+
+
+def test_claim_cues_arrive_right_after_their_feed_item():
+    show = load_showcases(SHOWCASE_ROOT)["match-042"]
+    tl = replay_timeline(show)
+    for item in show.desk.items:
+        feed = next(k for k, i in enumerate(tl) if i.kind == "feed" and i.data.moment.id == item.moment.id)
+        mine = [k for k, i in enumerate(tl) if i.kind == "cue" and i.data.type == "claim"
+                and i.data.id.startswith(f"claim-{item.moment.id}:")]
+        assert len(mine) == len(item.claims) and all(k > feed and tl[k].t == tl[feed].t for k in mine)

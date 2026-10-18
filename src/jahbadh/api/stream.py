@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from jahbadh.agents.contracts import Language, Rejection, RenderedClaim
 from jahbadh.schemas import EventType, Metric, Team
 
-StreamKind = Literal["match", "event", "state", "thinking", "feed", "failure", "renders", "end"]
+StreamKind = Literal["match", "event", "state", "thinking", "feed", "failure", "renders", "cue", "end"]
 
 
 class MatchInfo(BaseModel):
@@ -56,6 +56,8 @@ class MatchState(BaseModel):
     ppda: dict[str, float | None]     # keyed by the defending team
     shape: dict[str, Metric]          # average_positions per team, in that team's attacking frame
     formations: dict[str, str]
+    rhythm: Metric | None             # game_rhythm, controlled to chaotic
+    pass_difficulty: dict[str, float | None]   # each team's mean pass difficulty
 
 
 class RendersUpdate(BaseModel):
