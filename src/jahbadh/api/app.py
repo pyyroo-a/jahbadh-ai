@@ -1,4 +1,4 @@
-"""The desk's web API: config, the replay stream and the built UI.
+"""The desk's web API: config, the replay stream, the live desk and the built UI.
 
 Run it with: uvicorn jahbadh.api.app:create_app --factory --port 8000
 """
@@ -15,6 +15,8 @@ from fastapi.staticfiles import StaticFiles
 
 from jahbadh.agents.desk import Desk
 from jahbadh.api.config import ApiSettings, load_api_settings
+from jahbadh.api.limits import DailyLimit
+from jahbadh.api.live_routes import router as live_router
 from jahbadh.api.overlay import OverlayCue
 from jahbadh.api.personal import METRIC_CHOICES, PlayerFollow, player_follow
 from jahbadh.api.replay import Sleep, paced, to_sse
@@ -55,9 +57,13 @@ def create_app(settings: ApiSettings | None = None, desk_factory: DeskFactory | 
         app.state.timelines = {mid: replay_timeline(s) for mid, s in app.state.showcases.items()}
         app.state.cue_timelines = {mid: _cue_timeline(items) for mid, items in app.state.timelines.items()}
         yield
+        if app.state.live is not None:               # stopping the server never leaves model calls running
+            await app.state.live.cancel()
 
     app = FastAPI(title="Jahbadh desk", lifespan=lifespan)
     app.state.settings, app.state.desk_factory, app.state.sleep, app.state.now = settings, desk_factory, sleep, now
+    app.state.limit = DailyLimit(settings.state_dir / "live.json", settings.live_per_day)
+    app.state.live, app.state.live_lock = None, asyncio.Lock()
 
     @app.get("/api/health")
     def health() -> dict:
@@ -68,7 +74,7 @@ def create_app(settings: ApiSettings | None = None, desk_factory: DeskFactory | 
         shows = request.app.state.showcases.values()
         return {
             "live_mode": settings.live_mode,
-            "live_remaining": 0,
+            "live_remaining": request.app.state.limit.remaining() if settings.live_mode else 0,
             "showcases": [{"match_id": s.desk.match_id, "home": s.match.meta.home.name,
                            "away": s.match.meta.away.name, "score": s.match.meta.score,
                            "model": s.desk.model, "created": s.desk.created} for s in shows],
@@ -128,6 +134,7 @@ def create_app(settings: ApiSettings | None = None, desk_factory: DeskFactory | 
         except KeyError:
             raise HTTPException(404, f"No player called {player_id} in this match.") from None
 
+    app.include_router(live_router)
     if (settings.web_dist / "index.html").is_file():
         app.mount("/", StaticFiles(directory=settings.web_dist, html=True), name="ui")
     return app
