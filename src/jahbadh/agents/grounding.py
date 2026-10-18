@@ -60,19 +60,22 @@ def _formations(match: Match, horizon: float) -> set[str]:
     return known
 
 
-EVENT_FIELDS = ("xg",)
+EVENT_FIELDS = ("xg", "speed_kmh")
 
 
 def _figure_source(fig: Figure, claim: Claim, store: EvidenceStore,
                    known_events: dict[int, Event]) -> tuple[bool, float | str | None, bool]:
     """(is the figure's source cited evidence, the value it points at, may it be a percentage).
-    A figure cites a metric field, or "event:<id>" with field "xg" for a shot's xG from its event line."""
+    A figure cites a metric field, or "event:<id>" with field "xg" or "speed_kmh" for a shot's xG or synthetic
+    speed from its event line."""
     if fig.metric_id.startswith("event:"):
         raw = fig.metric_id.removeprefix("event:")
         event = known_events.get(int(raw)) if raw.isdigit() else None
         if event is None:
             return False, None, False
-        return True, getattr(event, fig.field) if fig.field in EVENT_FIELDS else None, False
+        if fig.field not in EVENT_FIELDS:
+            return True, None, False
+        return True, event.xg if fig.field == "xg" else event.detail.get(fig.field), False
     if fig.metric_id not in claim.metric_ids or fig.metric_id not in store:
         return False, None, False
     metric = store.get(fig.metric_id)

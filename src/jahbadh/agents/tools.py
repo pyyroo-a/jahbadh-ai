@@ -19,6 +19,7 @@ from jahbadh.agents.evidence import EvidenceStore, describe_event, summarize
 from jahbadh.schemas import EventType, Match, Metric
 
 MAX_EVENT_LINES = 40
+MAX_ALERTS = 15
 NOISY_EVENTS = (EventType.PRESSURE, EventType.CARRY)
 
 ChangeMetric = Literal["xg", "field_tilt", "ppda", "midfield_control", "zone_overloads", "line_height", "length",
@@ -151,8 +152,8 @@ def make_tools(match: Match, store: EvidenceStore, horizon: float) -> dict[str, 
 
     @_safe
     def get_shot_map(team_id: str, from_minute: float = 0, to_minute: float = 90) -> str:
-        """Every shot by a team: id, broadcast minute, shooter, xG, goal or not, and inside the penalty box or
-        not. Cite one shot's xG with field "shots.<id>.xg"."""
+        """Every shot by a team: id, broadcast minute, shooter, xG, goal or not, inside the penalty box or not,
+        and synthetic shot speed in km/h. Cite one shot's xG with field "shots.<id>.xg", its speed "shots.<id>.speed_kmh"."""
         return out(keep(an.shot_map(match, team_id, *window(from_minute, to_minute))))
 
     @_safe
@@ -177,13 +178,39 @@ def make_tools(match: Match, store: EvidenceStore, horizon: float) -> dict[str, 
         ranked = an.player_rankings(match, team_id, start, end, by=by, n=max(1, min(n, 10)))
         return out([keep(m) for m in ranked])
 
+    @_safe
+    def get_physical(player_id: str, from_minute: float = 0, to_minute: float = 90) -> str:
+        """One player's running: distance covered in km (value), top speed in km/h and when, and minutes on the
+        pitch. From the synthetic 1 Hz tracking; jumps faster than any run are left out and counted."""
+        return out(keep(an.player_physical(match, player_id, *window(from_minute, to_minute))))
+
+    @_safe
+    def get_physical_alerts(to_minute: float = 90) -> str:
+        """Name-tagged running alerts up to to_minute, latest last (at most 15): sprint_record when a player sets
+        a new match-wide top speed of at least 30 km/h, distance_milestone when a player first passes 5 or 10 km."""
+        alerts = an.physical_alerts(match, end=min(to_minute * 60, horizon))
+        return out([keep(m) for m in alerts[-MAX_ALERTS:]])
+
+    @_safe
+    def get_pass_quality(subject_id: str, from_minute: float = 0, to_minute: float = 90) -> str:
+        """Passing by a team or player: attempted, completed, accuracy, mean length in metres and mean difficulty
+        (value, 0 easy to 1 hard, from the simulator's own success odds), plus the hardest completed pass."""
+        return out(keep(an.pass_quality(match, subject_id, *window(from_minute, to_minute))))
+
+    @_safe
+    def get_game_rhythm(from_minute: float = 0, to_minute: float = 90) -> str:
+        """How settled the match is: possession changes per minute (value), passes per minute, passes per
+        possession, and label (controlled, balanced or chaotic, against thresholds measured over ten matches)."""
+        return out(keep(an.game_rhythm(match, *window(from_minute, to_minute))))
+
     tools = [list_events, get_xg, get_momentum, get_field_tilt, get_ppda, get_shape, get_heatmap,
              get_average_positions, get_zone_overloads, get_pass_network, get_midfield_control,
-             compare_before_after, get_match_stats, get_shot_map, get_attacking_sides, get_player_impact, rank_players]
+             compare_before_after, get_match_stats, get_shot_map, get_attacking_sides, get_player_impact, rank_players,
+             get_physical, get_physical_alerts, get_pass_quality, get_game_rhythm]
     return {fn.__name__: fn for fn in tools}
 
 
 TACTICAL_TOOLS = ("list_events", "get_xg", "get_momentum", "get_field_tilt", "get_ppda", "get_shape", "get_heatmap",
                   "get_average_positions", "get_zone_overloads", "get_pass_network", "get_midfield_control",
                   "compare_before_after", "get_match_stats", "get_shot_map", "get_attacking_sides", "get_player_impact",
-                  "rank_players")
+                  "rank_players", "get_physical", "get_physical_alerts", "get_pass_quality", "get_game_rhythm")

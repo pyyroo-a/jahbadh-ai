@@ -89,3 +89,38 @@ def test_shot_map_summary_lists_every_shot():
     out = json.loads(tools["get_shot_map"]("RMU", 0, 90))
     assert len(out["extra"]["shots"]) == out["fields"]["value"]
     assert {"get_match_stats"} <= set(ANALYST_TOOLS) and {"get_shot_map", "get_attacking_sides"} <= set(TACTICAL_TOOLS)
+
+
+def test_new_tools_store_their_metrics():
+    _, store, tools = tools_for()
+    physical = json.loads(tools["get_physical"]("RMU-33"))
+    passing = json.loads(tools["get_pass_quality"]("NBR"))
+    rhythm = json.loads(tools["get_game_rhythm"]())
+    alerts = json.loads(tools["get_physical_alerts"]())
+    assert physical["id"] == "physical:RMU-33:0-5400" and passing["id"] == "pass_quality:NBR:0-5400"
+    assert rhythm["id"] == "game_rhythm:MATCH:0-5400" and rhythm["fields"]["label"] in ("controlled", "balanced", "chaotic")
+    assert 0 < len(alerts) <= 15 and all(a["id"] in store for a in alerts)
+    assert {physical["id"], passing["id"], rhythm["id"]} <= {m.id for m in store.metrics()}
+    assert {"get_physical", "get_physical_alerts", "get_pass_quality", "get_game_rhythm"} <= set(TACTICAL_TOOLS)
+
+
+def test_tools_clamp_new_metrics_to_the_horizon():
+    _, store, tools = tools_for(horizon=601.0)
+    assert json.loads(tools["get_physical"]("RMU-33", 0, 90))["window"] == "1'-11'"
+    assert json.loads(tools["get_game_rhythm"](0, 90))["id"] == "game_rhythm:MATCH:0-601"
+    assert json.loads(tools["get_pass_quality"]("RMU", 0, 90))["id"] == "pass_quality:RMU:0-601"
+    alerts = json.loads(tools["get_physical_alerts"](90))
+    assert alerts and all(store.get(a["id"]).window[1] <= 601 for a in alerts)
+    assert "error" in json.loads(tools["get_physical"]("XYZ-1"))
+
+
+def test_shot_map_summary_carries_shot_speed():
+    _, _, tools = tools_for()
+    shots = json.loads(tools["get_shot_map"]("RMU", 0, 90))["extra"]["shots"]
+    assert all(len(s) == 7 and 35 <= s[6] <= 125 for s in shots)
+
+
+def test_tactical_instructions_mention_the_new_tools():
+    from jahbadh.agents.prompts import INSTRUCTIONS
+    for name in ("get_physical", "get_physical_alerts", "get_pass_quality", "get_game_rhythm"):
+        assert name in INSTRUCTIONS["tactical"]

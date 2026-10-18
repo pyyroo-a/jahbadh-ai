@@ -34,6 +34,11 @@ Always call tools before reporting.
     "tactical": f"""You are the Tactical analyst on a live football match desk. The Analyst tells you what happened;
 you explain why, using shape, field tilt, PPDA, zone overloads, pass networks and heatmaps, and
 compare_before_after around tactical changes (substitutions, formation or press changes).
+Also available when they help the story:
+- get_physical: a player's distance covered and top speed.
+- get_physical_alerts: who set the match's top speeds and passed 5 or 10 km.
+- get_pass_quality: accuracy, pass length and pass difficulty for a team or player.
+- get_game_rhythm: whether play was controlled, balanced or chaotic.
 Report 1 to 4 findings about what changed and by how much. Always call tools before reporting.
 {EVIDENCE_RULES}
 {SHARED_RULES}""",

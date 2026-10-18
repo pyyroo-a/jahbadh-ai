@@ -57,7 +57,7 @@ def resolve(metric: Metric, field: str) -> float | str | None:
 
 
 SHARE_UNITS = {"share", "home_share", "share_of_seconds"}
-SHARE_DATA_KEYS = {"pass_completion", "involvement", "ball", "numbers", "duels", "left", "centre", "right", "by_zone"}
+SHARE_DATA_KEYS = {"pass_completion", "accuracy", "involvement", "ball", "numbers", "duels", "left", "centre", "right", "by_zone"}
 
 
 def is_share(metric: Metric, field: str) -> bool:
@@ -106,8 +106,8 @@ def _extra(metric: Metric) -> dict | None:
     if metric.name == "heatmap" and "grid" in metric.data:
         return {"hot_zones": _hot_zones(metric)}
     if metric.name == "shot_map":
-        return {"shots": [[int(i), s["minute"], s["player_id"], round(s["xg"], 2), s["goal"], s["inside_box"]]
-                          for i, s in metric.data["shots"].items()]}
+        return {"shots": [[int(i), s["minute"], s["player_id"], round(s["xg"], 2), s["goal"], s["inside_box"],
+                           s.get("speed_kmh")] for i, s in metric.data["shots"].items()]}
     if metric.name == "pass_network":
         return {"top_edges": metric.data.get("edges", [])[:5]}
     if metric.name == "average_positions":
@@ -142,6 +142,8 @@ def describe_event(match: Match, e: Event) -> str:
         parts.append("complete" if e.outcome else "incomplete")
     elif e.type == EventType.SHOT:
         parts.append(f"xG {e.xg or 0:.2f}, {'scored' if e.outcome else 'no goal'}")
+        if "speed_kmh" in e.detail:
+            parts.append(f"speed {float(e.detail['speed_kmh']):.0f} km/h")
     elif e.type in WON_OR_LOST:
         parts.append("won the ball" if e.outcome else "did not win the ball")
     elif e.type == EventType.FORMATION_CHANGE:

@@ -3,7 +3,7 @@ import pytest
 from fakes import demo_match, make_match, p, static_tracking
 from jahbadh.agents.contracts import Moment
 from jahbadh.agents.evidence import (EvidenceStore, broadcast_window, describe_event, formation_at, moment_context,
-                                     resolve, score_at, summarize)
+                                     is_share, resolve, score_at, summarize)
 from jahbadh.analytics import before_after, field_tilt, heatmap, zone_overloads
 from jahbadh.schemas import EventType
 
@@ -83,3 +83,15 @@ def test_moment_context_lists_teams_score_and_players():
                                    team_id="RMU", label="61' switch"))
     assert m.meta.home.name in ctx and m.meta.away.name in ctx and "3-4-3" in ctx
     assert describe_event(m, switch) in ctx and m.meta.away.players[0].name in ctx
+
+
+def test_accuracy_reads_as_a_percentage():
+    from jahbadh.analytics import pass_quality
+    q = pass_quality(demo_match(), "NBR")
+    assert is_share(q, "accuracy") and not is_share(q, "value") and not is_share(q, "mean_length_m")
+
+
+def test_describe_shot_includes_its_synthetic_speed():
+    m = demo_match()
+    shot = next(e for e in m.events if e.type == EventType.SHOT)
+    assert f"speed {shot.detail['speed_kmh']:.0f} km/h" in describe_event(m, shot)

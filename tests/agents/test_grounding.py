@@ -153,3 +153,15 @@ def test_a_figure_cannot_hide_a_second_number():
     # final review: written "3 of 99" was checked on its first number only, so 99 slipped through
     assert check(claim("They made 3 of 99 passes.", [fig("3 of 99", "team_passes")])) == \
         [f"'3 of 99' does not match {TILT} team_passes = 3"]
+
+
+def test_a_figure_can_cite_a_shots_speed_from_its_event():
+    from fakes import shot_by
+    shot = shot_by(7, "NBR", "NBR-9", 0.2, t=100).model_copy(update={"detail": {"speed_kmh": 96.4}})
+    m = make_match([shot])
+    ok = Claim(id="m:c1", text="Jansen hit it at 96 km/h.", metric_ids=[], event_ids=[7],
+               figures=[Figure(metric_id="event:7", field="speed_kmh", written="96")])
+    assert check_claim(ok, m, EvidenceStore(m), 601) == []
+    wrong = ok.model_copy(update={"text": "Jansen hit it at 120 km/h.",
+                                  "figures": [Figure(metric_id="event:7", field="speed_kmh", written="120")]})
+    assert check_claim(wrong, m, EvidenceStore(m), 601) == ["'120' does not match event:7 speed_kmh = 96.400"]
