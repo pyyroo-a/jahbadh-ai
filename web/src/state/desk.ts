@@ -62,7 +62,13 @@ export function reduce(s: DeskState, m: StreamMessage): DeskState {
   }
 }
 
-export type ShownText = { text: string; note: string | null; dir: "rtl" | "ltr" };
+/** Every claim of the item has a render in this persona and language (mirrors agents.combos.has_combo). */
+export function hasCombo(item: FeedItem, persona: Persona, language: Language): boolean {
+  return item.claims.every((c) =>
+    item.renders.some((r) => r.claim_id === c.id && r.persona === persona && r.language === language));
+}
+
+export type ShownText ={ text: string; note: string | null; dir: "rtl" | "ltr" };
 
 /** The words for one claim in a persona and language: that combo, else the persona's English, else the claim. */
 export function claimText(item: FeedItem, claimId: string, persona: Persona, language: Language): ShownText {

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type {
   EventLine, FeedItem, MatchInfo, Moment, Rejection, RenderedClaim, StreamMessage, Team,
 } from "../api/types";
-import { claimText, initialDesk, nextMomentTime, reduce, rejectionsFor } from "./desk";
+import { claimText, hasCombo, initialDesk, nextMomentTime, reduce, rejectionsFor } from "./desk";
 
 const team = (id: string, name: string): Team => ({
   id, name, formation: "4-3-3", players: [],
@@ -114,5 +114,18 @@ describe("what to show", () => {
     expect(nextMomentTime({ ...info, moment_times: [25, 295, 885] }, 300)).toBe(885);
     expect(nextMomentTime({ ...info, moment_times: [25, 295, 885] }, 295)).toBe(885);
     expect(nextMomentTime({ ...info, moment_times: [25] }, 300)).toBeNull();
+  });
+});
+
+describe("hasCombo", () => {
+  it("is ready only when every claim has that persona and language", () => {
+    const two = item("goal-885", 885, {
+      claims: [{ id: "c1", text: "a", metric_ids: [], event_ids: [], figures: [] },
+        { id: "c2", text: "b", metric_ids: [], event_ids: [], figures: [] }],
+      renders: [r("casual", "es", "uno"), { ...r("casual", "es", "dos"), claim_id: "c2" }, r("casual", "ar", "واحد")],
+    });
+    expect(hasCombo(two, "casual", "es")).toBe(true);
+    expect(hasCombo(two, "casual", "ar")).toBe(false);
+    expect(hasCombo(item("empty", 1, { claims: [] }), "fantasy", "ar")).toBe(true);
   });
 });

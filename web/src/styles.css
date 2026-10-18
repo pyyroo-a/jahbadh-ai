@@ -53,3 +53,47 @@ body { margin: 0; min-height: 100vh; background: var(--bg); }
 @media (max-width: 1100px) {
   .columns { grid-template-columns: 1fr; }
 }
+
+/* Top bar switches */
+.switches { display: flex; gap: 14px; }
+.pills { display: flex; gap: 4px; }
+.pill {
+  padding: 3px 10px; border: 1px solid var(--line); border-radius: 999px; background: transparent;
+  color: var(--text); font: inherit; font-size: 13px; cursor: pointer;
+}
+.pill.on { border-color: var(--home); background: color-mix(in srgb, var(--home) 22%, transparent); }
+.pills.small .pill { font-size: 12px; padding: 2px 8px; }
+
+.column { display: flex; flex-direction: column; max-height: calc(100vh - 80px); }
+.column-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.column-head h2 { margin: 0; }
+
+/* Event stream */
+.event-list { list-style: none; margin: 8px 0 0; padding: 0; overflow-y: auto; }
+.event { display: flex; gap: 8px; padding: 5px 4px; border-bottom: 1px dashed var(--line); }
+.event.lit { background: color-mix(in srgb, var(--amber) 22%, transparent); border-left: 3px solid var(--amber); }
+.event-minute { flex: 0 0 34px; color: var(--muted); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* Desk feed */
+.feed { overflow-y: auto; }
+.moment { margin-bottom: 14px; }
+.tag { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 4px; }
+.thinking { padding: 8px; margin-bottom: 8px; border: 1px dashed var(--line); border-radius: 8px; color: var(--muted); }
+.claim { padding: 8px 10px; margin-bottom: 6px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+.claim:hover { border-color: var(--muted); }
+.claim.selected { border-color: var(--amber); background: color-mix(in srgb, var(--amber) 10%, transparent); }
+.claim p { margin: 0 0 4px; }
+.ok { color: var(--ok); font-size: 12px; }
+.note { color: var(--muted); font-size: 12px; font-style: italic; }
+.evidence { margin-top: 8px; padding-top: 6px; border-top: 2px solid var(--amber); font-size: 13px; }
+.chip {
+  display: inline-block; margin: 4px 4px 0 0; padding: 1px 7px; border-radius: 4px; font-size: 12px;
+  background: color-mix(in srgb, var(--amber) 18%, transparent);
+}
+.chip.metric { background: color-mix(in srgb, var(--home) 18%, transparent); }
+.rejected { padding: 8px 10px; margin-bottom: 6px; border: 1px dashed var(--line); border-radius: 8px; opacity: 0.85; }
+.rejected s { color: var(--muted); }
+.rejected-why { font-size: 12px; margin-top: 4px; }
+.bad { color: var(--bad); }
+.reasons { margin: 4px 0 0; padding-left: 18px; font-size: 12px; color: var(--muted); }
+.link { background: none; border: 0; padding: 0; color: var(--home); font: inherit; font-size: 12px; cursor: pointer; }
