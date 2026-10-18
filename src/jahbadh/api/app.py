@@ -15,6 +15,8 @@ from fastapi.staticfiles import StaticFiles
 
 from jahbadh.agents.desk import Desk
 from jahbadh.api.config import ApiSettings, load_api_settings
+from jahbadh.api.overlay import OverlayCue
+from jahbadh.api.personal import METRIC_CHOICES, PlayerFollow, player_follow
 from jahbadh.api.replay import Sleep, paced, to_sse
 from jahbadh.api.showcase import Showcase, load_showcases
 from jahbadh.api.stream import MatchInfo, StreamItem
@@ -38,6 +40,11 @@ def _resume_from(last_event_id: str | None, n_items: int) -> int | None:
     return min(int(last_event_id), n_items)
 
 
+def _cue_timeline(items: list[StreamItem]) -> list[StreamItem]:
+    """Only the cues, in the main stream's order, then the same end."""
+    return [i for i in items if i.kind == "cue"] + [items[-1]]
+
+
 def create_app(settings: ApiSettings | None = None, desk_factory: DeskFactory | None = None,
                sleep: Sleep = asyncio.sleep, now: Callable[[], float] = time.monotonic) -> FastAPI:
     settings = settings or load_api_settings()
@@ -46,6 +53,7 @@ def create_app(settings: ApiSettings | None = None, desk_factory: DeskFactory | 
     async def lifespan(app: FastAPI):
         app.state.showcases = load_showcases(settings.showcase_dir)
         app.state.timelines = {mid: replay_timeline(s) for mid, s in app.state.showcases.items()}
+        app.state.cue_timelines = {mid: _cue_timeline(items) for mid, items in app.state.timelines.items()}
         yield
 
     app = FastAPI(title="Jahbadh desk", lifespan=lifespan)
@@ -64,7 +72,13 @@ def create_app(settings: ApiSettings | None = None, desk_factory: DeskFactory | 
             "showcases": [{"match_id": s.desk.match_id, "home": s.match.meta.home.name,
                            "away": s.match.meta.away.name, "score": s.match.meta.score,
                            "model": s.desk.model, "created": s.desk.created} for s in shows],
+            "metric_choices": [c.model_dump() for c in METRIC_CHOICES.values()],
         }
+
+    async def play(items: list[StreamItem], speed: float, from_t: float,
+                   start: int) -> AsyncIterator[ServerSentEvent]:
+        async for index, item in paced(items, speed, start=start, from_t=from_t, sleep=sleep):
+            yield to_sse(index + 1, item)          # timeline items are numbered from 1
 
     @app.get("/api/replay/{match_id}/stream", response_class=EventSourceResponse)
     async def replay_stream(
@@ -83,8 +97,36 @@ def create_app(settings: ApiSettings | None = None, desk_factory: DeskFactory | 
                 precomputed=True, model=show.desk.model, created=show.desk.created,
                 moment_times=sorted(i.moment.t for i in show.desk.items)))
             start = 0
-        async for index, item in paced(items, speed, start=start, from_t=from_t, sleep=sleep):
-            yield to_sse(index + 1, item)          # timeline items are numbered from 1
+        async for message in play(items, speed, from_t, start):
+            yield message
+
+    @app.get("/api/overlay/schema")
+    def overlay_schema() -> dict:
+        return OverlayCue.model_json_schema()
+
+    @app.get("/api/replay/{match_id}/overlay")
+    def replay_overlay(request: Request, show: Annotated[Showcase, Depends(_showcase)]) -> list[OverlayCue]:
+        return [i.data for i in request.app.state.cue_timelines[show.desk.match_id][:-1]]
+
+    @app.get("/api/replay/{match_id}/overlay/stream", response_class=EventSourceResponse)
+    async def replay_overlay_stream(
+        request: Request,
+        show: Annotated[Showcase, Depends(_showcase)],
+        speed: Annotated[float, Query(ge=1, le=60)] = 6,
+        from_t: Annotated[float, Query(ge=0, le=5400)] = 0,
+        last_event_id: Annotated[str | None, Header()] = None,
+    ) -> AsyncIterator[ServerSentEvent]:
+        items: list[StreamItem] = request.app.state.cue_timelines[show.desk.match_id]
+        async for message in play(items, speed, from_t, _resume_from(last_event_id, len(items)) or 0):
+            yield message
+
+    @app.get("/api/replay/{match_id}/follow/{player_id}")
+    def replay_follow(show: Annotated[Showcase, Depends(_showcase)], player_id: str,
+                      t: Annotated[float, Query(ge=0, le=5400)]) -> PlayerFollow:
+        try:
+            return player_follow(show.match, player_id, t)
+        except KeyError:
+            raise HTTPException(404, f"No player called {player_id} in this match.") from None
 
     if (settings.web_dist / "index.html").is_file():
         app.mount("/", StaticFiles(directory=settings.web_dist, html=True), name="ui")
