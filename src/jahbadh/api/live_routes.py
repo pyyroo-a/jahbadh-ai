@@ -10,7 +10,7 @@ import secrets
 from collections.abc import AsyncIterator
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from fastapi.sse import EventSourceResponse, ServerSentEvent
 from pydantic import BaseModel
 
@@ -20,6 +20,8 @@ from jahbadh.agents.desk import Desk
 from jahbadh.agents.llm import make_chat_client
 from jahbadh.agents.localize import AzureTranslator
 from jahbadh.api.live import LiveRun
+from jahbadh.api.overlay import OverlayCue
+from jahbadh.api.personal import PlayerFollow, player_follow
 from jahbadh.api.replay import to_sse
 from jahbadh.schemas import Match
 from jahbadh.simulator import simulate_match
@@ -92,6 +94,35 @@ async def live_stream(run: Annotated[LiveRun, Depends(_run)],      # a 404 has t
     start = int(seen) + 1 if seen.isdigit() else 0    # the match message is index 0, so a resume skips it
     async for index, item in run.subscribe(start):
         yield to_sse(index, item)
+
+
+@router.get("/{run_id}/overlay")
+async def live_overlay(run: Annotated[LiveRun, Depends(_run)]) -> list[OverlayCue]:
+    """The cues so far. The history never runs past the clock, so neither does this."""
+    return [i.data for i in run.history if i.kind == "cue"]
+
+
+@router.get("/{run_id}/overlay/stream", response_class=EventSourceResponse)
+async def live_overlay_stream(run: Annotated[LiveRun, Depends(_run)],
+                              last_event_id: Annotated[str | None, Header()] = None) -> AsyncIterator[ServerSentEvent]:
+    """Only the cues, numbered from 1 like the replay overlay stream, then the end."""
+    seen = last_event_id.strip() if last_event_id else ""
+    after, n = (int(seen) if seen.isdigit() else 0), 0
+    async for _, item in run.subscribe():
+        if item.kind in ("cue", "end"):
+            n += 1
+            if n > after:
+                yield to_sse(n, item)
+
+
+@router.get("/{run_id}/follow/{player_id}")
+async def live_follow(run: Annotated[LiveRun, Depends(_run)], player_id: str,
+                      t: Annotated[float, Query(ge=0, le=5400)]) -> PlayerFollow:
+    """A player up to t, but never past the clock: live mode can't peek ahead."""
+    try:
+        return await asyncio.to_thread(player_follow, run.match, player_id, min(t, run.clock))
+    except KeyError:
+        raise HTTPException(404, f"No player called {player_id} in this match.") from None
 
 
 @router.post("/{run_id}/skip")

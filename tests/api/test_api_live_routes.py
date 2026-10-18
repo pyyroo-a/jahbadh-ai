@@ -145,3 +145,67 @@ def test_shutting_down_cancels_a_live_run(tmp_path):
         c.post("/api/live")
         run = c.app.state.live
     assert run.done and run.history[-1].data.reason == "cancelled"
+
+
+def _demo_seed(monkeypatch) -> None:
+    monkeypatch.setattr(live_routes.random, "randint", lambda a, b: 42)       # seed 42: the demo match
+
+
+def _holding_at(app, t: float):
+    """A sleep that lets the clock run until t, then holds it there."""
+    async def sleep(_s: float) -> None:
+        run = app.state.live
+        if run is not None and run.clock >= t:
+            await asyncio.Event().wait()
+    return sleep
+
+
+def _wait_for_clock(c: TestClient, t: float) -> float:
+    import time
+    deadline = time.monotonic() + 30
+    while c.app.state.live.clock < t:
+        assert time.monotonic() < deadline, "the live clock never got there"
+        time.sleep(0.02)
+    return c.app.state.live.clock
+
+
+def test_live_overlay_never_runs_past_the_clock(tmp_path, monkeypatch):
+    _demo_seed(monkeypatch)
+    app = live_app(tmp_path)
+    app.state.sleep = _holding_at(app, 1200)
+    with TestClient(app) as c:
+        rid = c.post("/api/live").json()["run_id"]
+        clock = _wait_for_clock(c, 1200)
+        cues = c.get(f"/api/live/{rid}/overlay").json()
+        assert cues and all(q["match_time"] <= clock for q in cues) and not any(q["precomputed"] for q in cues)
+        assert [q["match_time"] for q in cues] == sorted(q["match_time"] for q in cues)
+        assert c.get("/api/live/live-1-nope/overlay").status_code == 404
+
+
+def test_live_overlay_stream_sends_only_cues_then_ends(tmp_path):
+    with TestClient(live_app(tmp_path)) as c:
+        rid = c.post("/api/live").json()["run_id"]
+        msgs = parse_sse(c.get(f"/api/live/{rid}/overlay/stream").text)
+        cues = [i.data.id for i in c.app.state.live.history if i.kind == "cue"]
+        assert [m["data"]["id"] for m in msgs[:-1]] == cues and {m["event"] for m in msgs[:-1]} == {"cue"}
+        assert [m["id"] for m in msgs] == [str(i) for i in range(1, len(cues) + 2)]
+        assert msgs[-1]["event"] == "end" and msgs[-1]["data"] == {"reason": "full_time"}
+        resumed = parse_sse(c.get(f"/api/live/{rid}/overlay/stream", headers={"Last-Event-ID": "5"}).text)
+        assert resumed == msgs[5:]
+        assert c.get("/api/live/live-1-nope/overlay/stream").status_code == 404
+
+
+def test_live_follow_is_clamped_to_the_clock(tmp_path, monkeypatch):
+    from jahbadh.api.personal import player_follow
+    _demo_seed(monkeypatch)
+    app = live_app(tmp_path)
+    app.state.sleep = _holding_at(app, 600)
+    with TestClient(app) as c:
+        rid = c.post("/api/live").json()["run_id"]
+        clock = _wait_for_clock(c, 600)
+        got = c.get(f"/api/live/{rid}/follow/RMU-33?t=5400").json()
+        assert got["t"] == clock and got == player_follow(c.app.state.live.match, "RMU-33", clock).model_dump(mode="json")
+        assert c.get(f"/api/live/{rid}/follow/RMU-33?t=100").json()["t"] == 100
+        assert c.get(f"/api/live/{rid}/follow/XYZ-1?t=100").status_code == 404
+        assert c.get(f"/api/live/{rid}/follow/RMU-33?t=5401").status_code == 422
+        assert c.get("/api/live/live-1-nope/follow/RMU-33?t=100").status_code == 404

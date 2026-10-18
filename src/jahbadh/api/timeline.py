@@ -60,11 +60,13 @@ def _sorted(items: list[StreamItem]) -> list[StreamItem]:
     return sorted(items, key=lambda i: (i.t, _order(i)))       # stable: events keep their id order
 
 
-def match_timeline(match: Match) -> list[StreamItem]:
+def match_timeline(match: Match, precomputed: bool = True) -> list[StreamItem]:
+    """Events, states and cues; live mode passes precomputed=False so its cues say they were made as it played."""
     items = [StreamItem(t=e.t, kind="event", data=event_line(match, e)) for e in match.events]
     items += [StreamItem(t=float(t), kind="state", data=match_state(match, t))
               for t in range(0, MATCH_END + 1, STATE_STEP_S)]
-    items += [StreamItem(t=c.match_time, kind="cue", data=c) for c in event_cues(match) + metric_cues(match)]
+    cues = event_cues(match, precomputed) + metric_cues(match, precomputed)
+    items += [StreamItem(t=c.match_time, kind="cue", data=c) for c in cues]
     return _sorted(items)
 
 

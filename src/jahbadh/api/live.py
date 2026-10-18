@@ -6,7 +6,7 @@ persona and language combos, and cancels itself once nobody has watched for idle
 
 Everything a viewer sees is appended to `history`, in the order it happened, and never ahead of the clock:
 index 0 is the match, then events, states and cues at their time, a `thinking` item when a moment starts, and
-its `feed` (or `failure`) when the desk publishes. Viewers read the history and wait for more (subscribe).
+its `feed` (or `failure`) when the desk publishes, followed by a cue for each published claim. Viewers read the history and wait for more (subscribe).
 """
 
 import asyncio
@@ -21,6 +21,7 @@ from jahbadh.agents.contracts import FeedItem, Language, Moment, MomentFailure, 
 from jahbadh.agents.desk import Desk
 from jahbadh.agents.moments import detect_moments
 from jahbadh.agents.spotlight import spotlight_moment
+from jahbadh.api.overlay import claim_cues
 from jahbadh.api.replay import Sleep
 from jahbadh.api.stream import MatchInfo, RendersUpdate, StreamEnd, StreamItem
 from jahbadh.api.timeline import _sorted, match_timeline
@@ -133,7 +134,7 @@ class LiveRun:
 
     async def _play(self) -> None:
         thinking = [StreamItem(t=m.t, kind="thinking", data=m) for m in self.moments]
-        for item in _sorted(match_timeline(self.match) + thinking):
+        for item in _sorted(match_timeline(self.match, precomputed=False) + thinking):
             if self._nobody_watching():
                 await self.cancel()
                 return
@@ -185,6 +186,8 @@ class LiveRun:
                                         data=MomentFailure(moment_id=moment.id, error=f"{type(e).__name__}: {e}")))
                 return
         self._append(StreamItem(t=self.clock, kind="feed", data=item))
+        for cue in claim_cues(item, at=self.clock, precomputed=False):     # right after the line it quotes
+            self._append(StreamItem(t=self.clock, kind="cue", data=cue))
         for persona, language in self.combos:
             self._spawn(self._render(item, persona, language))
 

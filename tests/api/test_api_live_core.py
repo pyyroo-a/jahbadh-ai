@@ -229,3 +229,36 @@ def test_a_combo_added_mid_run_renders_what_already_published():
     feeds = [i.data.moment.id for i in run.history if i.kind == "feed"]
     rendered = [i.data.moment_id for i in run.history if i.kind == "renders"]
     assert sorted(rendered) == sorted(feeds) and len(feeds) == 16
+
+
+def _one_claim(monkeypatch) -> None:
+    """Every moment publishes one plain claim, so there is something to cue."""
+    from jahbadh.agents.contracts import Claim, FeedItem
+
+    async def publish(desk, moment):
+        claim = Claim(id=f"{moment.id}:c1", text=f"{moment.label}.", metric_ids=[], event_ids=list(moment.event_ids),
+                      figures=[])
+        return FeedItem(moment=moment, claims=[claim], renders=[], rejections=[], metrics=[], stats={}, latency_s=0.0)
+
+    monkeypatch.setattr(pipeline, "run_moment", publish)
+
+
+def test_live_claim_cues_follow_their_feed_item(monkeypatch):
+    _one_claim(monkeypatch)
+    run = run_with()
+    asyncio.run(drain(run))
+    h = run.history
+    feeds = [n for n, i in enumerate(h) if i.kind == "feed"]
+    assert len(feeds) == 16
+    for n in feeds:
+        cue = h[n + 1]
+        assert cue.kind == "cue" and cue.data.source == "claim" and cue.t == h[n].t
+        assert cue.data.id == f"claim-{h[n].data.moment.id}:c1" and cue.data.precomputed is False
+        assert cue.data.match_time == h[n].t and cue.data.text["en"] == h[n].data.claims[0].text
+
+
+def test_every_live_cue_says_it_was_not_precomputed():
+    run = run_with()
+    asyncio.run(drain(run))
+    cues = [i.data for i in run.history if i.kind == "cue"]
+    assert cues and {c.source for c in cues} >= {"event", "metric"} and not any(c.precomputed for c in cues)
