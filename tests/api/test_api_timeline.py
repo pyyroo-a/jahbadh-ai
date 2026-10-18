@@ -1,0 +1,75 @@
+import pytest
+
+from apifakes import SHOWCASE_ROOT, demo_match
+from jahbadh.agents.evidence import score_at
+from jahbadh.analytics import xg_total
+from jahbadh.api.showcase import load_showcases
+from jahbadh.api.stream import EventLine, MatchState, StreamEnd, StreamItem
+from jahbadh.api.timeline import REPLAY_DESK_LAG_S, event_line, match_state, match_timeline, replay_timeline
+
+
+def test_the_timeline_holds_every_event_and_a_state_every_minute():
+    m = demo_match()
+    tl = match_timeline(m)
+    assert sum(i.kind == "event" for i in tl) == len(m.events)
+    assert [i.t for i in tl if i.kind == "state"] == [60.0 * k for k in range(91)]
+    assert [i.t for i in tl] == sorted(i.t for i in tl)
+    assert {i.kind for i in tl} == {"event", "state"} and all(isinstance(i, StreamItem) for i in tl)
+
+
+def test_events_come_before_the_state_at_the_same_second():
+    tl = match_timeline(demo_match())
+    at_60 = [i.kind for i in tl if i.t == 60.0]
+    assert at_60[-1] == "state" and set(at_60[:-1]) <= {"event"}
+
+
+def test_kickoff_state_is_empty():
+    s = match_state(demo_match(), 0)
+    assert s.score == {"NBR": 0, "RMU": 0} and s.xg == {"NBR": 0.0, "RMU": 0.0} and s.minute == 1
+    assert s.momentum is None and s.field_tilt is None and s.ppda == {"NBR": None, "RMU": None} and s.shape == {}
+    assert s.formations == {"NBR": "4-3-3", "RMU": "4-3-3"}
+
+
+def test_a_state_never_counts_the_future():
+    m = demo_match()
+    s = match_state(m, 900)
+    assert s.score == score_at(m, 900) and s.score["NBR"] == 1          # the 15' goal (t 885)
+    assert s.xg["NBR"] == pytest.approx(xg_total(m, "NBR", 0, 900).value)
+    assert s.shape["RMU"].window == (300.0, 900.0) and s.shape["RMU"].name == "average_positions"
+    assert s.minute == 16 and 0 <= s.momentum <= 1 and 0 <= s.field_tilt <= 1
+
+
+def test_the_formation_switch_shows_in_the_state():
+    m = demo_match()
+    assert match_state(m, 3600).formations["RMU"] == "4-3-3"           # the switch happens at 60:00
+    assert match_state(m, 3660).formations["RMU"] == "3-4-3"
+
+
+def test_full_time_state_is_minute_90():
+    s = match_state(demo_match(), 5400)
+    assert s.minute == 90 and s.score == {"NBR": 3, "RMU": 5}
+
+
+def test_replay_thinks_before_it_publishes():
+    show = load_showcases(SHOWCASE_ROOT)["match-042"]
+    tl = replay_timeline(show)
+    for item in show.desk.items:
+        think = next(k for k, i in enumerate(tl) if i.kind == "thinking" and i.data.id == item.moment.id)
+        feed = next(k for k, i in enumerate(tl) if i.kind == "feed" and i.data.moment.id == item.moment.id)
+        assert think < feed and tl[feed].t == item.moment.t + REPLAY_DESK_LAG_S
+    assert tl[-1].kind == "end" and tl[-1].data == StreamEnd(reason="full_time")
+    assert [i.t for i in tl] == sorted(i.t for i in tl)
+    assert sum(i.kind == "feed" for i in tl) == len(show.desk.items)
+
+
+def test_event_line_payload_keys_are_the_protocol():
+    m = demo_match()
+    line = event_line(m, m.event(2))
+    assert isinstance(line, EventLine) and line.lines["en"] == "Marek Quill finds Quinn Yilmaz" and line.minute == 1
+    assert set(line.model_dump()) == {"id", "t", "minute", "type", "team_id", "player_id", "related_player_id",
+                                      "x", "y", "end_x", "end_y", "outcome", "xg", "lines"}
+
+
+def test_match_state_payload_keys_are_the_protocol():
+    assert set(MatchState.model_fields) == {"t", "minute", "score", "xg", "momentum", "field_tilt", "ppda", "shape",
+                                            "formations"}
