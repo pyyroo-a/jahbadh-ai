@@ -27,7 +27,10 @@ No real match data is used anywhere.
   storyline and the final score. Schema: `match_meta.schema.json`.
 - `events.parquet`: one row per event (passes, shots with xG, tackles, cards,
   subs, formation changes and so on). Schema: `event.schema.json`. The `detail`
-  column is a JSON string with extra info, like a card's colour.
+  column is a JSON string with extra info, like a card's colour. Every pass has
+  `p_success`, the simulator's own chance that it would be completed (0.3 to
+  0.97). Every shot has `speed_kmh`, a synthetic shot speed (35 to 125 km/h)
+  drawn from its own random stream, so it never changes the rest of the match.
 - `tracking.parquet`: where every player and the ball are, once per second.
   Columns: `t` (second, 0 to 5399), `entity_id` (player id, or `BALL`),
   `team_id` (or `BALL`), `x`, `y` (metres).

@@ -16,6 +16,7 @@ from jahbadh.pitch import LENGTH, WIDTH, attack_x, clamp, third
 from jahbadh.schemas import Event, EventType, Match, MatchMeta, ScriptedChange, Team
 from jahbadh.simulator.formations import slots_for
 from jahbadh.simulator.movement import TeamState, step_positions
+from jahbadh.simulator.shot_speed import add_shot_speeds
 from jahbadh.simulator.storyline import apply_due_changes
 from jahbadh.simulator.teams import DEFAULT_TEAMS, TeamSpec, make_teams
 from jahbadh.simulator.xg import shot_xg
@@ -218,14 +219,15 @@ class _Engine:
         p_ok = (PASS_BASE - PASS_LENGTH_PEN * (length / 40) - PASS_PRESSURE_PEN * pressured
                 - PASS_FINAL_THIRD_PEN * into_final)
         p_ok = min(max(p_ok, 0.3), 0.97)
+        odds = {"p_success": round(p_ok, 4)}      # kept so pass difficulty can be read back later; no extra draw
 
         if self.rng.random() < p_ok:
             self.emit(t, team_id, pid, EventType.PASS, bx, by, end_x=rx, end_y=ry, outcome=True,
-                      related_player_id=st.on_pitch[recv])
+                      related_player_id=st.on_pitch[recv], detail=odds)
             self.give_ball(team_id, recv)
             return
 
-        self.emit(t, team_id, pid, EventType.PASS, bx, by, end_x=rx, end_y=ry, outcome=False)
+        self.emit(t, team_id, pid, EventType.PASS, bx, by, end_x=rx, end_y=ry, outcome=False, detail=odds)
         opp = self.opp(team_id)
         roll = self.rng.random()
         if roll < INTERCEPT_SHARE + LOOSE_BALL_SHARE:
@@ -349,4 +351,6 @@ class _Engine:
 
 def simulate_match(seed: int, match_id: str | None = None, storyline: list[ScriptedChange] | None = None,
                    home_spec: TeamSpec = DEFAULT_TEAMS[0], away_spec: TeamSpec = DEFAULT_TEAMS[1]) -> Match:
-    return _Engine(seed, match_id or f"match-{seed:03d}", list(storyline or []), home_spec, away_spec).run()
+    match = _Engine(seed, match_id or f"match-{seed:03d}", list(storyline or []), home_spec, away_spec).run()
+    add_shot_speeds(match, seed)                  # after the run, on its own random stream
+    return match
