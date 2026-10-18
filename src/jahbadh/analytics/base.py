@@ -1,8 +1,17 @@
-"""Shared helpers for metrics: stable ids and team direction."""
+"""Shared helpers for metrics: stable ids, team direction and the tracking frames a window covers."""
+
+from math import ceil
 
 from jahbadh.schemas import Match
 
 MATCH_END = 5400.0
+LAST_FRAME = 5399
+
+
+def frame_range(start: float, end: float) -> tuple[int, int] | None:
+    """The whole-second tracking frames inside [start, end), clamped to the match; None if there are none."""
+    first, last = max(0, ceil(start)), min(LAST_FRAME, ceil(end) - 1)
+    return (first, last) if first <= last else None
 
 
 def check_window(start: float, end: float) -> None:

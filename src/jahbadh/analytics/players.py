@@ -6,7 +6,7 @@ story for any position: a holding midfielder with zero xGI can still top
 the ball-wins or progressive-passes rankings.
 """
 
-from jahbadh.analytics.base import check_window, is_home, metric_id
+from jahbadh.analytics.base import check_window, frame_range, is_home, metric_id
 from jahbadh.pitch import attack_x, third
 from jahbadh.schemas import Event, EventType, Match, Metric
 
@@ -53,7 +53,7 @@ def player_impact(match: Match, player_id: str, start: float = 0, end: float = 5
     tr = match.tracking
     seconds = int(((tr["entity_id"] == player_id) & (tr["t"] >= start) & (tr["t"] < end)).sum())
     common = dict(id=metric_id("player_impact", player_id, start, end), name="player_impact", subject=player_id,
-                  window=(start, end), unit="xGI", evidence_frames=(int(start), int(end) - 1))
+                  window=(start, end), unit="xGI", evidence_frames=frame_range(start, end))
     if seconds == 0:
         return Metric(**common, value=None, data={"minutes": 0.0},
                       note="Player was not on the pitch in this window.")

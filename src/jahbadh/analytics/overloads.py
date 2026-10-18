@@ -12,7 +12,7 @@ almost always "overloaded" (centre-backs vs a lone striker), which says nothing.
 import numpy as np
 import pandas as pd
 
-from jahbadh.analytics.base import check_window, is_home, metric_id
+from jahbadh.analytics.base import check_window, frame_range, is_home, metric_id
 from jahbadh.pitch import LENGTH, WIDTH
 from jahbadh.schemas import Match, Metric
 
@@ -46,7 +46,7 @@ def zone_overloads(match: Match, team_id: str, start: float = 0, end: float = 54
     over = counts[counts["ours"] - counts["theirs"] >= margin].reset_index()
 
     common = dict(id=metric_id("zone_overloads", team_id, start, end, **({"margin": margin} if margin != 2 else {})), name="zone_overloads", subject=team_id,
-                  window=(start, end), unit="share_of_seconds", evidence_frames=(int(start), int(end) - 1))
+                  window=(start, end), unit="share_of_seconds", evidence_frames=frame_range(start, end))
     by_zone = (over.groupby("zone")["t"].nunique() / n_seconds).sort_index() if n_seconds else pd.Series()
     headline = by_zone[[z.split("-")[0] in HEADLINE_THIRDS for z in by_zone.index]]
     if headline.empty:

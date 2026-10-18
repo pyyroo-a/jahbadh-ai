@@ -8,7 +8,7 @@ always reads left to right as attacking, whichever side the team is on.
 import numpy as np
 import pandas as pd
 
-from jahbadh.analytics.base import check_window, is_home, metric_id
+from jahbadh.analytics.base import check_window, frame_range, is_home, metric_id
 from jahbadh.pitch import LENGTH, WIDTH
 from jahbadh.schemas import Match, Metric
 
@@ -44,7 +44,7 @@ def heatmap(match: Match, subject: str, start: float = 0, end: float = 5400,
     rows = _attacking(rows, is_home(match, team_id))
     n = len(rows)
     common = dict(id=metric_id("heatmap", subject, start, end, **({"grid": f"{grid[0]}x{grid[1]}"} if tuple(grid) != (21, 14) else {})), name="heatmap", subject=subject,
-                  window=(start, end), unit="samples", evidence_frames=(int(start), int(end) - 1))
+                  window=(start, end), unit="samples", evidence_frames=frame_range(start, end))
     if n == 0:
         return Metric(**common, value=None, data={"cells": list(grid)},
                       note="Subject was not on the pitch in this window.")
@@ -61,7 +61,7 @@ def average_positions(match: Match, team_id: str, start: float = 0, end: float =
     players = {pid: [float(r.x), float(r.y)] for pid, r in means.iterrows()}
     return Metric(id=metric_id("average_positions", team_id, start, end), name="average_positions",
                   subject=team_id, window=(start, end), value=float(len(players)), unit="players",
-                  evidence_frames=(int(start), int(end) - 1), data={"players": players},
+                  evidence_frames=frame_range(start, end), data={"players": players},
                   note=None if players else "No tracking for this team in this window.")
 
 
@@ -88,7 +88,7 @@ def shape(match: Match, team_id: str, start: float = 0, end: float = 5400) -> di
     }
     return {
         key: Metric(id=metric_id(key, team_id, start, end), name=key, subject=team_id, window=(start, end),
-                    value=None if v is None else float(v), unit="m", evidence_frames=(int(start), int(end) - 1),
+                    value=None if v is None else float(v), unit="m", evidence_frames=frame_range(start, end),
                     note=None if v is not None else "Not enough outfield tracking in this window.")
         for key, v in values.items()
     }

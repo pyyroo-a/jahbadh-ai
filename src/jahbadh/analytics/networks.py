@@ -13,13 +13,23 @@ def pass_network(match: Match, team_id: str, start: float = 0, end: float = 5400
     passes = [e for e in match.events_of(EventType.PASS, team_id=team_id, start=start, end=end)
               if e.outcome and e.player_id and e.related_player_id]
     starts: dict[str, list[tuple[float, float]]] = defaultdict(list)
+    receptions: dict[str, list[tuple[float, float]]] = defaultdict(list)
     pairs: Counter[tuple[str, str]] = Counter()
     for e in passes:
         starts[e.player_id].append((attack_x(e.x, home), e.y if home else WIDTH - e.y))
+        if e.end_x is not None and e.end_y is not None:
+            receptions[e.related_player_id].append((attack_x(e.end_x, home), e.end_y if home else WIDTH - e.end_y))
         pairs[(e.player_id, e.related_player_id)] += 1
+    received = Counter(e.related_player_id for e in passes)
+
+    def mean(pts: list[tuple[float, float]]) -> list[float] | None:
+        return [sum(x for x, _ in pts) / len(pts), sum(y for _, y in pts) / len(pts)] if pts else None
+
+    # a passer sits where they pass from; a pure receiver (no passes, e.g. a striker) where they receive.
+    # Every simulated pass has an end point, so pos is None only for hand-built passes without one.
     nodes = {
-        pid: {"pos": [sum(x for x, _ in pts) / len(pts), sum(y for _, y in pts) / len(pts)], "passes": len(pts)}
-        for pid, pts in sorted(starts.items())
+        pid: {"pos": mean(starts[pid] or receptions[pid]), "passes": len(starts[pid]), "received": received[pid]}
+        for pid in sorted(set(starts) | set(received))
     }
     edges = sorted(([a, b, n] for (a, b), n in pairs.items() if n >= min_passes), key=lambda e: (-e[2], e[0], e[1]))
     return Metric(
