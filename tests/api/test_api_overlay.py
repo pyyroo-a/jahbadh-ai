@@ -104,3 +104,12 @@ def test_running_cues_carry_the_players_club():
     team_of = {p.id: t.id for t in (m.meta.home, m.meta.away) for p in t.players}
     alerts = [c for c in metric_cues(m) if c.type in ("sprint_record", "distance_milestone")]
     assert alerts and all(c.team_id == team_of[c.player_id] for c in alerts)
+
+
+def test_overlay_wording_matches_the_template_lines():
+    from jahbadh.api.overlay import CUE_PHRASES
+    cues = {c.type: c for c in event_cues(demo_match())}
+    assert cues["formation_change"].text["ar"] == "Rivermouth United يغير الخطة إلى 3-4-3"
+    assert cues["tactic_change"].text["es"] == "Northbridge FC sube su línea de presión"
+    assert CUE_PHRASES["press_deeper"]["ar"] == "{team} يخفض خط الضغط"
+    assert CUE_PHRASES["press_deeper"]["es"] == "{team} baja su línea de presión"
