@@ -9,17 +9,20 @@ type Props = {
   persona: Persona;
   language: Language;
   selected: boolean;
+  focus: string | null;           // the mode's badge, e.g. "Your club"
+  dimmed: boolean;
   eventsById: Record<number, EventLine>;
   onSelect: () => void;
 };
 
-export default function ClaimCard({ item, claim, persona, language, selected, eventsById, onSelect }: Props) {
+export default function ClaimCard({ item, claim, persona, language, selected, focus, dimmed, eventsById, onSelect }: Props) {
   const shown = claimText(item, claim.id, persona, language);
   const n = evidenceCount(claim);
   const evidence = selected ? evidenceOf(item, claim, eventsById) : null;
   return (
-    <div className={selected ? "claim selected" : "claim"} role="button" tabIndex={0} aria-pressed={selected}
+    <div className={["claim", selected && "selected", dimmed && "dimmed"].filter(Boolean).join(" ")} role="button" tabIndex={0} aria-pressed={selected}
       onClick={onSelect} onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), onSelect())}>
+      {focus && <div className="focus-badge">{focus}</div>}
       <p dir={shown.dir}>{shown.text}</p>
       {shown.note && NOTES[shown.note] && <div className="note">{NOTES[shown.note]}</div>}
       <div className="ok">✓ Verified by the Referee · {n} evidence {n === 1 ? "item" : "items"}</div>

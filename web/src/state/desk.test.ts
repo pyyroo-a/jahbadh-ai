@@ -71,6 +71,7 @@ describe("reduce", () => {
     s = reduce(s, msg(2, "thinking", moment("full_time-5400", 5400)));
     s = reduce(s, msg(3, "end", { reason: "cancelled" }));
     expect(s.state?.minute).toBe(2);
+    expect(s.states.map((x) => x.t)).toEqual([60]);              // every minute is kept for the metric line
     expect(s.thinking).toEqual([]);
     expect(s.ended).toEqual({ reason: "cancelled" });
   });

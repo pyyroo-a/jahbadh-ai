@@ -1,6 +1,6 @@
 // The desk's JSON endpoints. Errors carry the server's friendly detail line, ready to show as it is.
 
-import type { DeskConfig, Language, Persona } from "./types";
+import type { DeskConfig, Language, Persona, PlayerFollow } from "./types";
 
 export class ApiError extends Error {
   status: number;
@@ -45,3 +45,9 @@ export const replayUrl = (matchId: string, speed: number, fromT = 0) =>
   `/api/replay/${matchId}/stream?speed=${speed}&from_t=${fromT}`;
 
 export const liveUrl = (runId: string) => `/api/live/${runId}/stream`;
+
+/** One player up to t: from the showcase in replay, or clamped to the clock in live mode. */
+export const getFollow = (matchId: string, playerId: string, t: number, runId: string | null = null) =>
+  call<PlayerFollow>(runId
+    ? `/api/live/${runId}/follow/${playerId}?t=${t}`
+    : `/api/replay/${matchId}/follow/${playerId}?t=${t}`);

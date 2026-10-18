@@ -2,16 +2,16 @@ import { useEffect, useRef, useState } from "react";
 import type { EventLine, Language } from "../api/types";
 import { visibleEvents } from "../state/events";
 
-type Props = { events: EventLine[]; language: Language; highlighted: Set<number> };
+type Props = { events: EventLine[]; language: Language; highlighted: Set<number>; scrollKey: string | null };
 
-export default function EventStream({ events, language, highlighted }: Props) {
+export default function EventStream({ events, language, highlighted, scrollKey }: Props) {
   const [mode, setMode] = useState<"key" | "all">("key");
   const list = useRef<HTMLOListElement>(null);
   const shown = visibleEvents(events, mode, highlighted);
 
-  useEffect(() => {       // bring the selected claim's evidence into view
-    if (highlighted.size) list.current?.querySelector(".event.lit")?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-  }, [highlighted]);
+  useEffect(() => {       // bring a clicked claim's evidence into view (not on every follow refresh)
+    if (scrollKey) list.current?.querySelector(".event.lit")?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [scrollKey]);
 
   return (
     <section className="column events">

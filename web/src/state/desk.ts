@@ -11,6 +11,7 @@ export type DeskState = {
   events: EventLine[];
   eventsById: Record<number, EventLine>;
   state: MatchState | null;
+  states: MatchState[];              // one a minute, for single-metric mode
   thinking: Moment[];
   items: FeedItem[];
   failures: MomentFailure[];
@@ -19,7 +20,7 @@ export type DeskState = {
 };
 
 export const initialDesk: DeskState = {
-  info: null, events: [], eventsById: {}, state: null, thinking: [], items: [], failures: [], ended: null, lastId: -1,
+  info: null, events: [], eventsById: {}, state: null, states: [], thinking: [], items: [], failures: [], ended: null, lastId: -1,
 };
 
 const renderKey = (r: RenderedClaim) => `${r.claim_id}|${r.persona}|${r.language}`;
@@ -38,7 +39,7 @@ export function reduce(s: DeskState, m: StreamMessage): DeskState {
     case "event":
       return { ...next, events: [...s.events, m.data], eventsById: { ...s.eventsById, [m.data.id]: m.data } };
     case "state":
-      return { ...next, state: m.data };
+      return { ...next, state: m.data, states: [...s.states, m.data] };
     case "thinking":
       return { ...next, thinking: [...s.thinking.filter((t) => t.id !== m.data.id), m.data] };
     case "feed": {
