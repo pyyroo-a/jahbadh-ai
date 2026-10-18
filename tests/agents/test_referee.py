@@ -63,3 +63,14 @@ def test_faithful_mode_compares_against_the_original():
     assert asyncio.run(judge(run, [rewrite], mode="faithful", originals={good.id: good.text})) == {good.id: None}
     prompt = run.desk.client.calls[0][1][-1]
     assert good.text in prompt and rewrite.text in prompt
+
+
+def test_the_judge_checks_which_side_a_share_favours_and_that_words_fit_numbers():
+    # showcase run: "Northbridge pinned Rivermouth back" was published with Northbridge's field tilt at 16%, and
+    # "a high-quality chance (xG 0.19)" passed too; the numbers were right, the words were not
+    from jahbadh.agents.prompts import INSTRUCTIONS
+    judge, writer = INSTRUCTIONS["referee"], INSTRUCTIONS["writer"]
+    for rule in ("below 50%", "pinning", "under 0.3 xG", "space or time", "quarter"):
+        assert rule in judge
+    for rule in ("below 50%", "under 0.3 xG"):
+        assert rule in writer

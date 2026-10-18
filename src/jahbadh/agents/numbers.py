@@ -33,3 +33,30 @@ def number_matches(written: str, value: float | str) -> bool:
     tolerance = 0.5 * 10 ** -decimals + 1e-9
     target = abs(value) * 100 if "%" in w else abs(value)
     return abs(number - target) <= tolerance
+
+
+NUMBER_WORDS = {w: i for i, w in enumerate(
+    "zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen "
+    "seventeen eighteen nineteen twenty".split())} | {"twice": 2}
+NUMBER_WORD = re.compile(r"(?<![\w-])(" + "|".join(sorted(NUMBER_WORDS, key=len, reverse=True)) + r")\b(-?)(\s*)(\w*)",
+                         re.IGNORECASE)
+# "one" is often not a count: "laying one to Pereira", "one of the best", "one worth 0.69", "no one"
+ONE_IS_NOT_A_COUNT = {"", "of", "to", "worth", "that", "who", "which", "another", "more", "or", "and", "the", "a",
+                      "an", "in", "for", "on", "at", "from", "with"}
+NOT_A_COUNT_AFTER_HYPHEN = set(NUMBER_WORDS) | {"on", "touch", "sided", "off", "time"}
+
+
+def words_to_digits(text: str) -> str:
+    """Number words as digits, so "five goals" is checked like "5 goals". A count only: "one" before a noun, and
+    never in "no one", "one-two" or "one-on-one"."""
+    def swap(m: re.Match) -> str:
+        word, hyphen, space, nxt = m.group(1), m.group(2), m.group(3), m.group(4)
+        lower, after = word.lower(), nxt.lower()
+        if hyphen and after in NOT_A_COUNT_AFTER_HYPHEN:
+            return m.group(0)
+        if lower == "one" and not hyphen and after in ONE_IS_NOT_A_COUNT:
+            return m.group(0)
+        if lower == "one" and re.search(r"\bno\s+$", text[:m.start()], re.IGNORECASE):
+            return m.group(0)
+        return str(NUMBER_WORDS[lower]) + hyphen + space + nxt
+    return NUMBER_WORD.sub(swap, text)

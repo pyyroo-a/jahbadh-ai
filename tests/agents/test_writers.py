@@ -88,3 +88,18 @@ def test_rewrite_prompt_skips_unknown_and_future_events():
     asyncio.run(rewrite(run, [(bad, ["nope"])], []))
     prompt = run.desk.client.calls[0][1][-1]
     assert f"#{late.id} " not in prompt and "#975 61'" in prompt
+
+
+def test_event_ids_listed_as_metrics_move_to_events():
+    # showcase run: on Rasmus's 83' goal every claim listed "event:1272" style ids as metrics, was rejected as
+    # "unknown metric" twice, and the goal published nothing; where an event id sits is bookkeeping, not truth
+    draft = ClaimDraft(text="Rasmus scored again.", metric_ids=["event:975", WIDTH_CHANGE, "event:x"], event_ids=[974],
+                       figures=[])
+    run = ft_run({"writer": [Draft(claims=[draft])]})
+    [claim] = asyncio.run(write(run, []))
+    assert claim.event_ids == [974, 975] and claim.metric_ids == [WIDTH_CHANGE, "event:x"]
+
+
+def test_the_writer_is_told_number_words_need_figures():
+    from jahbadh.agents.prompts import INSTRUCTIONS
+    assert 'Number words count as numbers' in INSTRUCTIONS["writer"] and '"five"' in INSTRUCTIONS["writer"]

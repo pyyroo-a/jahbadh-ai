@@ -165,3 +165,26 @@ def test_a_figure_can_cite_a_shots_speed_from_its_event():
     wrong = ok.model_copy(update={"text": "Jansen hit it at 120 km/h.",
                                   "figures": [Figure(metric_id="event:7", field="speed_kmh", written="120")]})
     assert check_claim(wrong, m, EvidenceStore(m), 601) == ["'120' does not match event:7 speed_kmh = 96.400"]
+
+
+def test_number_words_are_checked_like_digits():
+    # showcase run: "leaving one booking on the pitch" published although there were 3; words skipped layer 1
+    assert check(claim("Northbridge had three of the final-third passes.", [fig("three", "team_passes")])) == []
+    assert check(claim("Northbridge had four of the final-third passes.", [fig("four", "team_passes")])) == \
+        ["'4' does not match field_tilt:NBR:0-600 team_passes = 3"]
+    assert check(claim("That left one booking on the pitch.")) == ["unsupported number '1'"]
+    assert check(claim("Northbridge had three final-third passes.", [fig("3", "team_passes")])) == []
+
+
+def test_a_duration_in_words_follows_the_duration_rule():
+    assert check(claim("Over the ten minutes they had 75% of it.", [fig("75%")])) == []
+    assert check(claim("Over the twelve minutes they had 75% of it.", [fig("75%")])) == ["unsupported duration '12 minutes'"]
+
+
+def test_meta_text_never_reaches_viewers():
+    # showcase run: "involved in the cited pass exchanges" and "completing the hardest pass (event 84)" published
+    assert check(claim("He was involved in the cited pass exchanges.")) == ["meta text 'cited' in the text"]
+    assert check(claim("He completed the hardest pass (event 84) of 75%.", [fig("75%")])) == \
+        ["meta text 'event 84' in the text"]
+    assert check(claim("The evidence shows 75% for Northbridge after #1161.", [fig("75%")])) == \
+        ["meta text 'evidence' in the text", "meta text '#1161' in the text"]

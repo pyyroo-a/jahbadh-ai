@@ -70,3 +70,29 @@ def test_faithful_mode_allows_plain_explanations_of_terms():
     # live run: 6 of 11 casual lines fell back because explaining "xG" counted as a new fact
     from jahbadh.agents.prompts import INSTRUCTIONS
     assert "explanation of a standard term" in INSTRUCTIONS["referee"]
+
+
+def test_the_fantasy_style_reports_and_never_forecasts():
+    # showcase run: 48 of 65 fantasy rewrites fell back, nearly all for adding forecasts like "will negatively
+    # affect his fantasy output"; the faithful judge was right, so the style must stop asking for them
+    from jahbadh.agents.prompts import PERSONA_STYLES, persona_prompt
+    style = PERSONA_STYLES["fantasy"]
+    assert "never predict" in style and "points" in style and "minutes" in style
+    assert "never predict" in persona_prompt("fantasy", ["A line."])
+
+
+def test_a_persona_may_write_a_number_as_a_word():
+    # casual rewrites often turn "3 goals" into "three goals"; the figure must follow the word, not be dropped
+    from jahbadh.agents.contracts import Figure
+    from jahbadh.analytics import match_stats
+    run, good = grounded_claim(personas=("pundit", "casual"))
+    stats = run.store.add(match_stats(run.desk.match, "NBR"))
+    goals = stats.data["goals"]
+    good = good.model_copy(update={"text": f"Northbridge FC scored {goals} goals.", "metric_ids": [stats.id],
+                                   "figures": [Figure(metric_id=stats.id, field="goals", written=str(goals))]})
+    words = {1: "one", 2: "two", 3: "three", 4: "four", 5: "five"}
+    casual = f"Northbridge FC banged in {words[goals]} goals."
+    run.desk.client.script["persona"] = [Rewrites(texts=[casual])]
+    run.desk.client.script["referee"] = [Verdicts(verdicts=[Verdict(claim_id=good.id, supported=True, reason="same")])]
+    renders, rejected = asyncio.run(render_personas(run, [good]))
+    assert renders[1].text == casual and rejected == []

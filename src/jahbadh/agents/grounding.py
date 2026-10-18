@@ -2,14 +2,15 @@
 
 A claim passes only if every id it cites exists (and is not in the future), every figure matches its
 metric at the precision it is written, every minute, duration, formation and score in the text is backed
-by the evidence, and no other number is left over.
+by the evidence, and no other number is left over. Number words count as numbers ("five goals" is checked
+like "5 goals"), and nothing written for the desk itself (field names, "cited", event ids) reaches viewers.
 """
 
 import re
 
 from jahbadh.agents.contracts import Claim, Figure
 from jahbadh.agents.evidence import EvidenceStore, is_share, resolve, score_at
-from jahbadh.agents.numbers import NUMBER, number_matches
+from jahbadh.agents.numbers import NUMBER, number_matches, words_to_digits
 from jahbadh.schemas import Event, EventType, Match, Metric
 
 MINUTE_PATTERNS = [re.compile(r"(?<![\d.])(\d{1,2})['’]"),
@@ -20,6 +21,7 @@ FORMATION = re.compile(r"\b\d(?:-\d){2,3}\b")
 SCORE = re.compile(r"\b(\d{1,2})-(\d{1,2})\b")
 PERCENT_AFTER = re.compile(r"\s*(?:%|per ?cent\b)", re.IGNORECASE)
 FIELD_NAME = re.compile(r"\b[a-z]+(?:_[a-z]+)+\b")      # e.g. home_threat: written for code, not viewers
+META_TEXT = re.compile(r"\b(?:cited|evidence)\b|\bevent\s*#?\d+|#\d+", re.IGNORECASE)   # desk words, not viewer words
 
 
 def occurrence(written: str, text: str) -> re.Match | None:
@@ -108,10 +110,11 @@ def check_claim(claim: Claim, match: Match, store: EvidenceStore, horizon: float
         else:
             events.append(e)
 
-    text = claim.text
+    text = words_to_digits(claim.text)
     known_events = {e.id: e for e in events}
     for fig in claim.figures:
-        found = occurrence(fig.written, text)
+        written = words_to_digits(fig.written)
+        found = occurrence(written, text)
         cited, value, share = _figure_source(fig, claim, store, known_events)
         if not cited:
             reasons.append(f"figure cites {fig.metric_id} which is not in the evidence")
@@ -119,15 +122,15 @@ def check_claim(claim: Claim, match: Match, store: EvidenceStore, horizon: float
             reasons.append(f"'{fig.written}' is not in the text")
         else:
             # the text decides whether a number is a percentage: "3%" or "3 per cent" with written "3" is one too
-            percent = "%" in fig.written or bool(PERCENT_AFTER.match(text, found.end()))
-            as_written = fig.written + "%" if percent and "%" not in fig.written else fig.written
+            percent = "%" in written or bool(PERCENT_AFTER.match(text, found.end()))
+            as_written = written + "%" if percent and "%" not in written else written
             if value is None:
                 reasons.append(f"{fig.metric_id} has no field {fig.field}")
             elif percent and not share:
                 reasons.append(f"'{fig.written}' is a percentage but {fig.metric_id} {fig.field} is not a share")
             elif not number_matches(as_written, value):
                 shown = f"{value:.3f}" if isinstance(value, float) else value
-                reasons.append(f"'{fig.written}' does not match {fig.metric_id} {fig.field} = {shown}")
+                reasons.append(f"'{written}' does not match {fig.metric_id} {fig.field} = {shown}")
         if found is not None:
             text = _cut(text, found.span())
 
@@ -156,6 +159,8 @@ def check_claim(claim: Claim, match: Match, store: EvidenceStore, horizon: float
         if found.group(0) in allowed_scores:
             text = _cut(text, found.span())
 
+    text = META_TEXT.sub(" ", text)          # "event 84" is reported once, as meta text, not as a stray number too
     reasons += [f"unsupported number '{token}'" for token in NUMBER.findall(text)]
     reasons += [f"field name '{name}' in the text" for name in FIELD_NAME.findall(claim.text)]
+    reasons += [f"meta text '{m.group(0)}' in the text" for m in META_TEXT.finditer(claim.text)]
     return reasons

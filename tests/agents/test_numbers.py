@@ -1,6 +1,6 @@
 import pytest
 
-from jahbadh.agents.numbers import normalize_digits, number_matches, numeric_tokens
+from jahbadh.agents.numbers import normalize_digits, number_matches, numeric_tokens, words_to_digits
 
 
 @pytest.mark.parametrize("written,value,ok", [
@@ -22,3 +22,21 @@ def test_normalize_digits():
     assert normalize_digits("۷۹") == "79"
     assert normalize_digits("un 0,79 y 1.500 pases") == "un 0.79 y 1.500 pases"
     assert numeric_tokens("79 % de 3-4-3") == ["79", "3", "4", "3"]
+
+
+@pytest.mark.parametrize("text,expected", [
+    ("five goals from ten shots", "5 goals from 10 shots"),
+    ("Three shots and twice on target", "3 shots and 2 on target"),
+    ("leaving one booking on the pitch", "leaving 1 booking on the pitch"),
+    ("a tidy four-pass sequence", "a tidy 4-pass sequence"),
+    ("in the ten minutes before the change", "in the 10 minutes before the change"),
+    ("laying one to Yusuf Pereira", "laying one to Yusuf Pereira"),          # a pronoun, not a count
+    ("one of the best chances", "one of the best chances"),
+    ("a very good chance, one worth 0.69 xG", "a very good chance, one worth 0.69 xG"),
+    ("a quick one-two and a one-on-one", "a quick one-two and a one-on-one"),
+    ("no one closed him down", "no one closed him down"),
+    ("someone and everyone", "someone and everyone"),
+])
+def test_number_words_read_as_digits(text, expected):
+    # showcase run: "leaving one booking on the pitch" was false (3 bookings by 61') and number words were never checked
+    assert words_to_digits(text) == expected

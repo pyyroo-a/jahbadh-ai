@@ -7,6 +7,7 @@ from jahbadh.agents.contracts import Claim, ClaimDraft, Draft, Finding, Moment
 from jahbadh.agents.desk import MomentRun
 from jahbadh.agents.grounding import occurrence
 from jahbadh.agents.llm import ask
+from jahbadh.agents.numbers import words_to_digits
 from jahbadh.agents.prompts import rewrite_prompt, writer_prompt
 
 WriterKind = Literal["commentary", "recap", "spotlight"]
@@ -25,11 +26,16 @@ def no_em_dashes(text: str) -> str:
 def tidy(run: MomentRun, draft: ClaimDraft) -> ClaimDraft:
     """Fix bookkeeping, never truth: no em dashes, figures only for numbers really in the text (minutes have
     their own rule, so a minute is never a figure), a figure's metric listed as evidence when it is in the store,
-    and an event figure's event listed too. Every number left still has to pass the Referee."""
+    an event figure's event listed too, and an "event:<id>" listed as a metric moved to the events.
+    Every number left still has to pass the Referee."""
     text = no_em_dashes(draft.text)
-    figures = [f for f in draft.figures if occurrence(f.written, text) and not MINUTE_MARK.match(f.written)]
-    metric_ids = list(dict.fromkeys(draft.metric_ids + [f.metric_id for f in figures if f.metric_id in run.store]))
-    event_ids = list(draft.event_ids)
+    said = words_to_digits(text)
+    figures = [f for f in draft.figures
+               if occurrence(words_to_digits(f.written), said) and not MINUTE_MARK.match(f.written)]
+    listed = [m for m in draft.metric_ids if not (m.startswith("event:") and m.removeprefix("event:").isdigit())]
+    moved = [int(m.removeprefix("event:")) for m in draft.metric_ids if m not in listed]
+    metric_ids = list(dict.fromkeys(listed + [f.metric_id for f in figures if f.metric_id in run.store]))
+    event_ids = list(dict.fromkeys(list(draft.event_ids) + moved))
     for f in figures:
         raw = f.metric_id.removeprefix("event:")
         if f.metric_id.startswith("event:") and raw.isdigit() and int(raw) not in event_ids:

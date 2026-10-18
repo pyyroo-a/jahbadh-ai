@@ -56,8 +56,11 @@ Describe time spans naturally and truthfully: a window of 51'-61' is "the ten mi
 To quote a shot's xG from an event line, use a figure with metric_id "event:<id>" and field "xg".
 Round like a broadcaster: xG to two decimals, metres to whole numbers, shares as whole percentages.
 Keep each sentence readable: two or three numbers, not a list of every stat.
+Choose words that fit the numbers: a team with a share below 50% (field tilt, momentum) is behind on it, so it
+is not on top or pinning the other team back, and a shot under 0.3 xG is not a big or high-quality chance.
 A minute in the text needs a cited event at that broadcast minute, or a cited metric whose window starts or ends there.
-Formations like 3-4-3 and the score are fine. Any other number needs a figure. Never put ids, field names
+Formations like 3-4-3 and the score are fine. Any other number needs a figure. Number words count as numbers:
+"five goals" needs a figure written "five", exactly as in the text. Never put ids, field names
 (like home_threat or team_passes) or words like "cited" or "evidence" in the text: write for viewers.
 {SHARED_RULES}""",
     "referee": f"""You are the Referee on a live football match desk. You check claims before anything is published.
@@ -70,6 +73,13 @@ In support mode, decide for each claim whether its cited evidence really support
 - time phrases (in the minute before, since half time, over the last 10 minutes) must match the cited metric's
   window or the cited events' minutes;
 - superlatives (most, best, primary, only) need a ranking or comparison in the evidence;
+- sides: a share belongs to one team (field tilt and midfield control to the subject team, momentum's value to
+  the home team). A team whose share is below 50% is behind on that measure, so it is not on top, not
+  dominating and not pinning the other team back; check which team the sentence credits;
+- size and quality words must fit the number: a shot under 0.3 xG is not a big or high-quality chance, and words
+  like dominant, controlled, light or intense need a number that shows it;
+- a claim about the space or time a player had, or why a team did something, needs evidence for that exact thing;
+- span words (opening quarter, first half, late on) must match the cited window: 1' to 15' is not a quarter;
 - the claim must not say more than the evidence shows.
 In faithful mode, each rewrite must say the same thing as its original: no new facts, numbers, names or causes,
 and nothing flipped. A short plain-language explanation of a standard term (what xG, PPDA, field tilt or
@@ -97,7 +107,9 @@ LANGUAGE_NAMES = {"ar": "Arabic", "es": "Spanish"}
 PERSONA_STYLES = {
     "casual": "a casual fan: plain everyday words, warm and lively. Swap jargon like PPDA, xG or field tilt for "
               "plain words, or add a few words on what the term means in general",
-    "fantasy": "a fantasy football player: lead with the players involved and what the line means for their output",
+    "fantasy": "a fantasy football player: lead with the players involved and the numbers in the line (goals, "
+               "assists, shots, xG, cards, minutes). Report what happened only: never predict points, minutes, "
+               "returns or future form, and never judge what it means for a fantasy team",
 }
 
 KIND_FOCUS = {

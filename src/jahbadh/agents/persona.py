@@ -7,8 +7,9 @@ back to the pundit line, and the rejection is kept.
 
 from jahbadh.agents.contracts import Claim, Persona, Rejection, RenderedClaim, Rewrites
 from jahbadh.agents.desk import MomentRun
-from jahbadh.agents.grounding import check_claim
+from jahbadh.agents.grounding import check_claim, occurrence
 from jahbadh.agents.llm import AgentOutputError, ask
+from jahbadh.agents.numbers import words_to_digits
 from jahbadh.agents.prompts import persona_prompt
 from jahbadh.agents.referee import judge
 from jahbadh.agents.writers import no_em_dashes
@@ -34,7 +35,9 @@ async def _render(run: MomentRun, persona: Persona, claims: list[Claim]) -> tupl
         if problem:
             failures[c.id] = (c.text, [problem])
             continue
-        rewrite = c.model_copy(update={"text": texts[i], "figures": [f for f in c.figures if f.written in texts[i]]})
+        said = words_to_digits(texts[i])      # a rewrite may say "three" for "3": the figure follows the number
+        kept = [f for f in c.figures if occurrence(words_to_digits(f.written), said)]
+        rewrite = c.model_copy(update={"text": texts[i], "figures": kept})
         reasons = check_claim(rewrite, run.desk.match, run.store, run.moment.horizon)
         if reasons:
             failures[c.id] = (texts[i], reasons)

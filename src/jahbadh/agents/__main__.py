@@ -1,9 +1,9 @@
 """Run the desk over a saved match:
 
     python -m jahbadh.agents data/generated/match-042 [--limit N] [--personas pundit,casual,fantasy]
-        [--languages en,ar,es] [--concurrency 3] [--no-spotlight] [--no-team-recaps] [--mermaid]
+        [--languages en,ar,es] [--concurrency 3] [--no-spotlight] [--no-team-recaps] [--out PATH] [--mermaid]
 
-Writes MATCH_DIR/desk.json with every approved claim, render and rejection, and prints a summary.
+Writes MATCH_DIR/desk.json (or --out) with every approved claim, render and rejection, and prints a summary.
 """
 
 import argparse
@@ -41,8 +41,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--concurrency", type=int, default=3)
     parser.add_argument("--no-spotlight", action="store_true", help="skip the player spotlights")
     parser.add_argument("--no-team-recaps", action="store_true", help="skip the per-club full-time recaps")
+    parser.add_argument("--out", type=Path, help="where to write desk.json (default: MATCH_DIR/desk.json)")
     parser.add_argument("--mermaid", action="store_true", help="print the per-moment workflow and exit")
     args = parser.parse_args(argv)
+    if args.concurrency < 1:
+        print("--concurrency must be at least 1", file=sys.stderr)
+        return 2
 
     try:
         personas = _choices(args.personas, get_args(Persona), "persona")
@@ -76,7 +80,8 @@ def main(argv: list[str] | None = None) -> int:
     desk = Desk(client=client, match=match, translator=translator, personas=personas, languages=languages,
                 effort=settings.reasoning_effort)
     run = asyncio.run(run_desk(desk, moments, concurrency=args.concurrency))
-    out = args.match_dir / "desk.json"
+    out = args.out or args.match_dir / "desk.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(run.model_dump_json(indent=2), encoding="utf-8")
 
     drafted = sum(i.stats["drafted"] for i in run.items)

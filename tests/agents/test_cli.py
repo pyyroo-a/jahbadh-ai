@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from fakes import demo_match, scripted_full_desk_client
 from jahbadh.agents.__main__ import main
 from jahbadh.agents.config import ENV_VARS
@@ -50,7 +52,8 @@ def run_cli(monkeypatch, tmp_path, *flags):
     monkeypatch.setattr("jahbadh.agents.__main__.make_chat_client", lambda s: scripted_full_desk_client())
     monkeypatch.setenv("FOUNDRY_API_KEY", "test")
     assert main([str(tmp_path / "m"), "--no-spotlight", "--languages", "en", "--personas", "pundit", *flags]) == 0
-    return DeskRun.model_validate_json((tmp_path / "m" / "desk.json").read_text(encoding="utf-8"))
+    out = Path(flags[flags.index("--out") + 1]) if "--out" in flags else tmp_path / "m" / "desk.json"
+    return DeskRun.model_validate_json(out.read_text(encoding="utf-8"))
 
 
 def test_cli_puts_team_recaps_before_full_time(monkeypatch, tmp_path):
@@ -61,3 +64,17 @@ def test_cli_puts_team_recaps_before_full_time(monkeypatch, tmp_path):
 def test_cli_can_skip_team_recaps(monkeypatch, tmp_path):
     kinds = [i.moment.kind for i in run_cli(monkeypatch, tmp_path, "--no-team-recaps").items]
     assert "team_recap" not in kinds and kinds[-1] == "full_time"
+
+
+def test_concurrency_must_be_at_least_one(capsys, monkeypatch, tmp_path):
+    save_match(demo_match(), tmp_path / "m")
+    monkeypatch.chdir(tmp_path)
+    assert main([str(tmp_path / "m"), "--concurrency", "0"]) == 2
+    assert "--concurrency must be at least 1" in capsys.readouterr().err
+
+
+def test_out_is_where_desk_json_goes(monkeypatch, tmp_path):
+    out = tmp_path / "x" / "y" / "desk.json"
+    run_cli(monkeypatch, tmp_path, "--limit", "1", "--no-team-recaps", "--out", str(out))
+    assert out.exists() and not (tmp_path / "m" / "desk.json").exists()
+    assert DeskRun.model_validate_json(out.read_text(encoding="utf-8")).match_id == "match-042"
