@@ -43,7 +43,7 @@ function Moment({ item, persona, language, selection, onSelect, waiting, desk, m
         const selected = selection?.momentId === item.moment.id && selection.claimId === c.id;
         return (
           <ClaimCard key={c.id} item={item} claim={c} persona={persona} language={language} selected={selected}
-            focus={focus ? label : null} dimmed={mode.kind !== "all" && !focus} eventsById={desk.eventsById}
+            focus={focus ? label : null} dimmed={mode.kind !== "all" && !focus} eventsById={desk.eventsById} info={desk.info}
             onSelect={() => onSelect(selected ? null : { momentId: item.moment.id, claimId: c.id })} />
         );
       })}

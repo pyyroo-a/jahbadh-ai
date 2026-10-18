@@ -126,3 +126,26 @@ body { margin: 0; min-height: 100vh; background: var(--bg); }
 }
 .pinned:hover { border-color: var(--amber); }
 .pinned .tag { display: block; }
+
+/* Tactical view */
+.tactical { overflow-y: auto; }
+.pitch { width: 100%; height: auto; margin-top: 4px; background: var(--pitch); border-radius: 8px; }
+.markings { fill: none; stroke: var(--line); stroke-width: 0.35; }
+.markings .spot { fill: var(--line); }
+.dot-label { font-size: 1.8px; font-weight: 700; fill: var(--text); text-anchor: middle; pointer-events: none; }
+.zone { fill: color-mix(in srgb, var(--amber) 22%, transparent); stroke: var(--amber); stroke-width: 0.4; stroke-dasharray: 1.2 0.8; }
+.zone-label { font-size: 2.6px; font-weight: 700; fill: var(--amber); }
+.event-arrow { stroke: var(--amber); stroke-width: 0.5; }
+.arrow-head { fill: var(--amber); }
+.event-point { fill: var(--amber); stroke: var(--bg); stroke-width: 0.25; }
+.momentum { margin-top: 10px; }
+.momentum-label { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+.momentum-bar { display: flex; height: 12px; border-radius: 4px; overflow: hidden; background: var(--away); }
+.momentum-bar .home { background: var(--home); }
+.momentum-bar .away { flex: 1; }
+.momentum-bar.empty { background: var(--line); color: var(--muted); font-size: 10px; line-height: 12px; padding-left: 6px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin-top: 10px; }
+.tile { display: flex; flex-direction: column; padding: 8px; border: 1px solid var(--line); border-radius: 8px; text-align: center; font-size: 12px; }
+.tile b { font-size: 20px; font-variant-numeric: tabular-nums; }
+.tile-sub { color: var(--muted); font-size: 11px; }
+.footer-note { margin-top: 10px; color: var(--muted); font-size: 11px; }

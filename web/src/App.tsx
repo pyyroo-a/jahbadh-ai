@@ -7,6 +7,7 @@ import EventStream from "./components/EventStream";
 import FollowPanel from "./components/FollowPanel";
 import MetricFocus from "./components/MetricFocus";
 import ModeBar from "./components/ModeBar";
+import TacticalView from "./components/TacticalView";
 import TopBar from "./components/TopBar";
 import { hasCombo, initialDesk, reduce } from "./state/desk";
 import type { Selection } from "./state/evidence";
@@ -72,6 +73,12 @@ export default function App() {
     return new Set([...(claim?.event_ids ?? []), ...followed]);
   }, [desk.items, selection, mode.kind, follow]);
 
+  const selected = useMemo(() => {
+    const item = desk.items.find((i) => i.moment.id === selection?.momentId);
+    const claim = item?.claims.find((c) => c.id === selection?.claimId);
+    return item && claim ? { item, claim } : null;
+  }, [desk.items, selection]);
+
   const choice = mode.kind === "metric" ? choices.find((c) => c.key === mode.key) : undefined;
   const pinned = useMemo(() => !info || mode.kind !== "metric" ? [] : desk.items.flatMap((item) => item.claims
     .filter((c) => inFocus(claimTags(item, c, info, desk.eventsById), mode, choices))
@@ -86,18 +93,19 @@ export default function App() {
       <main className="columns">
         <EventStream events={events} language={language} highlighted={highlighted}
           scrollKey={selection ? `${selection.momentId}|${selection.claimId}` : null} />
-        <section className="column">
-          <h2>Tactical view</h2>
-          {info && mode.kind === "player" && (
-            <FollowPanel key={mode.playerId} info={info} playerId={mode.playerId} clock={clock} runId={liveRunId}
-              items={desk.items} persona={persona} language={language} onFollow={setFollow} />
-          )}
-          {info && choice && (
-            <MetricFocus info={info} choice={choice} states={desk.states} pinned={pinned} persona={persona}
-              language={language} onPick={(momentId, claimId) => setSelection({ momentId, claimId })} />
-          )}
-          {mode.kind !== "player" && !choice && (state ? `${state.minute}' state` : "Waiting for kick-off")}
-        </section>
+        {info ? (
+          <TacticalView info={info} state={state} selected={selected} eventsById={desk.eventsById} mode={mode}
+            heatmap={mode.kind === "player" ? follow?.heatmap ?? null : null}>
+            {mode.kind === "player" && (
+              <FollowPanel key={mode.playerId} info={info} playerId={mode.playerId} clock={clock} runId={liveRunId}
+                items={desk.items} persona={persona} language={language} onFollow={setFollow} />
+            )}
+            {choice && (
+              <MetricFocus info={info} choice={choice} states={desk.states} pinned={pinned} persona={persona}
+                language={language} onPick={(momentId, claimId) => setSelection({ momentId, claimId })} />
+            )}
+          </TacticalView>
+        ) : <section className="column"><h2>Tactical view</h2>Waiting for kick-off</section>}
         <DeskFeed desk={desk} persona={persona} language={language} selection={selection} onSelect={setSelection}
           waiting={waiting} notice={notice} mode={mode} choices={choices} />
       </main>

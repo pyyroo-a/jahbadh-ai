@@ -1,6 +1,7 @@
-import type { Claim, EventLine, FeedItem, Language, Persona } from "../api/types";
+import type { Claim, EventLine, FeedItem, Language, MatchInfo, Persona } from "../api/types";
 import { claimText } from "../state/desk";
 import { evidenceCount, evidenceOf } from "../state/evidence";
+import { formatMetric } from "../state/format";
 import { NOTES } from "../state/labels";
 
 type Props = {
@@ -12,10 +13,11 @@ type Props = {
   focus: string | null;           // the mode's badge, e.g. "Your club"
   dimmed: boolean;
   eventsById: Record<number, EventLine>;
+  info: MatchInfo | null;
   onSelect: () => void;
 };
 
-export default function ClaimCard({ item, claim, persona, language, selected, focus, dimmed, eventsById, onSelect }: Props) {
+export default function ClaimCard({ item, claim, persona, language, selected, focus, dimmed, eventsById, info, onSelect }: Props) {
   const shown = claimText(item, claim.id, persona, language);
   const n = evidenceCount(claim);
   const evidence = selected ? evidenceOf(item, claim, eventsById) : null;
@@ -33,7 +35,10 @@ export default function ClaimCard({ item, claim, persona, language, selected, fo
             {evidence.events.map((e) => (
               <span key={e.id} className="chip"><span dir={language === "ar" ? "rtl" : "ltr"}>{e.minute}' {e.lines[language]}</span></span>
             ))}
-            {evidence.metrics.map((m) => <span key={m.id} className="chip metric">{m.name.replaceAll("_", " ")}</span>)}
+            {evidence.metrics.map((m) => {
+              const f = info ? formatMetric(m, info) : null;
+              return <span key={m.id} className="chip metric">{f ? `${f.label} ${f.value}` : m.name}</span>;
+            })}
           </div>
         </div>
       )}
