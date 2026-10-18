@@ -54,3 +54,13 @@ def test_stats_reject_bad_windows(sim_match):
     for fn in (match_stats, shot_map, attacking_sides):
         with pytest.raises(ValueError, match="window"):
             fn(sim_match, "NBR", 600, 300)
+
+
+def test_shot_map_carries_shot_speed(sim_match):
+    shots = shot_map(sim_match, "NBR").data["shots"].values()
+    assert shots and all(35 <= s["speed_kmh"] <= 125 for s in shots)
+
+
+def test_shot_map_speed_is_none_for_shots_without_one():
+    s = shot_map(make_match([shot_by(1, "NBR", "NBR-9", 0.2)]), "NBR").data["shots"]["1"]
+    assert s["speed_kmh"] is None

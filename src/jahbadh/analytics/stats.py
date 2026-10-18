@@ -52,7 +52,8 @@ def shot_map(match: Match, team_id: str, start: float = 0, end: float = 5400) ->
     for s in shots:
         ax, ay = attack_x(s.x, home), s.y if home else WIDTH - s.y
         data[str(s.id)] = {"minute": s.minute, "player_id": s.player_id, "x": ax, "y": ay, "xg": s.xg or 0.0,
-                           "goal": bool(s.outcome), "inside_box": in_box(ax, ay)}
+                           "goal": bool(s.outcome), "inside_box": in_box(ax, ay),
+                           "speed_kmh": s.detail.get("speed_kmh")}      # synthetic, see simulator/shot_speed.py
     return Metric(id=metric_id("shot_map", team_id, start, end), name="shot_map", subject=team_id,
                   window=(start, end), value=float(len(shots)), unit="shots", data={"shots": data},
                   evidence_event_ids=[s.id for s in shots])
