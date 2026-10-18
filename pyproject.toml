@@ -18,10 +18,12 @@ dependencies = [
     "openai>=3.33,<4",
     "azure-ai-translation-text>=2.0,<3",
     "python-dotenv>=1.2",
+    "fastapi>=0.143,<1",
+    "uvicorn>=0.54,<1",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8"]
+dev = ["pytest>=8", "httpx2>=2.13"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

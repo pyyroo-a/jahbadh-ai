@@ -25,6 +25,27 @@ async def no_sleep(_s: float) -> None:
     return None
 
 
+def recording_sleep():
+    """A no-op sleep that appends each delay to the returned list."""
+    slept: list[float] = []
+
+    async def sleep(s: float) -> None:
+        slept.append(s)
+
+    return sleep, slept
+
+
+def api_settings(tmp: Path, **overrides):
+    """Settings for a test app: state in tmp, the real showcase, no built UI, live mode off."""
+    from jahbadh.api.config import ApiSettings
+    values = {"state_dir": tmp, "showcase_dir": SHOWCASE_ROOT, "web_dist": tmp / "no-dist", "live_mode": False}
+    return ApiSettings(**(values | overrides))
+
+
+def last_t(timeline) -> float:
+    return timeline[-1].t
+
+
 def parse_sse(text: str) -> list[dict]:
     """Server-sent events as {"event", "id", "data"}, data JSON-decoded; keep-alive comments are skipped."""
     messages = []

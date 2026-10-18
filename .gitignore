@@ -18,6 +18,7 @@ venv/
 
 # Generated data
 data/generated/
+data/state/
 *.parquet
 
 # Frontend
