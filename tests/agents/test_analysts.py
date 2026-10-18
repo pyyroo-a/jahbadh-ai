@@ -60,3 +60,12 @@ def test_finding_keeps_its_good_evidence_and_loses_the_bad():
     mixed = Finding(text="switch", metric_ids=["nope"], event_ids=[switch.id, 999999])
     run = run_for({"analyst": [Findings(findings=[mixed])]})
     assert asyncio.run(analyse(run)) == [Finding(text="switch", metric_ids=[], event_ids=[switch.id])]
+
+
+def test_a_team_recap_investigates_that_teams_side():
+    from jahbadh.agents.prompts import analyst_prompt
+    from jahbadh.agents.spotlight import team_recap_moments
+    run = run_for({}, moment=team_recap_moments(demo_match())[1])
+    prompt = analyst_prompt(run)
+    assert "from this moment's team's side" in prompt and "The team is RMU." in prompt
+    assert "no cheering, no blame" in prompt and "Full-time recap for Rivermouth United" in prompt

@@ -1,4 +1,4 @@
-"""Player spotlights: the standout players picked from the impact rankings, data-true.
+"""Player spotlights and per-club recaps: the extra full-time moments, data-true.
 
 Three angles so the quieter heroes get a turn too: expected goal involvement, progressive passes and ball
 wins. Each angle picks a different player, and an angle where nobody did anything is skipped.
@@ -20,6 +20,12 @@ def spotlight_moment(match: Match, player_id: str, angle_label: str, t: float = 
                 return Moment(id=f"spotlight-{player_id}", kind="spotlight", t=t, team_id=team.id,
                               player_id=player_id, label=f"Spotlight: {p.name} ({angle_label})")
     raise KeyError(player_id)
+
+
+def team_recap_moments(match: Match, t: float = 5400) -> list[Moment]:
+    """One full-time recap per club, home first, told from that club's side (favourite-club mode)."""
+    return [Moment(id=f"team_recap-{team.id}", kind="team_recap", t=t, team_id=team.id,
+                   label=f"Full-time recap for {team.name}") for team in (match.meta.home, match.meta.away)]
 
 
 def spotlight_moments(match: Match, t: float = 5400) -> list[Moment]:

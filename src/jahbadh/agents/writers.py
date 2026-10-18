@@ -38,7 +38,7 @@ def tidy(run: MomentRun, draft: ClaimDraft) -> ClaimDraft:
 
 
 def kind_for(moment: Moment) -> WriterKind:
-    return {"full_time": "recap", "spotlight": "spotlight"}.get(moment.kind, "commentary")
+    return {"full_time": "recap", "team_recap": "recap", "spotlight": "spotlight"}.get(moment.kind, "commentary")
 
 
 async def write(run: MomentRun, findings: list[Finding]) -> list[Claim]:

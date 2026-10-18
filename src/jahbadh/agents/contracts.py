@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from jahbadh.schemas import Metric
 
 MomentKind = Literal["goal", "big_chance", "card", "substitution", "formation_change", "tactic_change",
-                     "momentum_swing", "check_in", "full_time", "spotlight"]
+                     "momentum_swing", "check_in", "full_time", "spotlight", "team_recap"]
 Persona = Literal["pundit", "casual", "fantasy"]
 Language = Literal["en", "ar", "es"]
 Layer = Literal["deterministic", "semantic", "persona", "localization"]

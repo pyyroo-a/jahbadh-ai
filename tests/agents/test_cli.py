@@ -41,3 +41,23 @@ def test_cli_rejects_unknown_persona(capsys, monkeypatch, tmp_path):
     save_match(demo_match(), tmp_path / "m")
     monkeypatch.chdir(tmp_path)
     assert main([str(tmp_path / "m"), "--personas", "pundit,poet"]) == 2 and "poet" in capsys.readouterr().err
+
+
+def run_cli(monkeypatch, tmp_path, *flags):
+    save_match(demo_match(), tmp_path / "m")
+    monkeypatch.chdir(tmp_path)
+    clear_env(monkeypatch)
+    monkeypatch.setattr("jahbadh.agents.__main__.make_chat_client", lambda s: scripted_full_desk_client())
+    monkeypatch.setenv("FOUNDRY_API_KEY", "test")
+    assert main([str(tmp_path / "m"), "--no-spotlight", "--languages", "en", "--personas", "pundit", *flags]) == 0
+    return DeskRun.model_validate_json((tmp_path / "m" / "desk.json").read_text(encoding="utf-8"))
+
+
+def test_cli_puts_team_recaps_before_full_time(monkeypatch, tmp_path):
+    ids = [i.moment.id for i in run_cli(monkeypatch, tmp_path).items]
+    assert ids[-3:] == ["team_recap-NBR", "team_recap-RMU", "full_time-5400"]
+
+
+def test_cli_can_skip_team_recaps(monkeypatch, tmp_path):
+    kinds = [i.moment.kind for i in run_cli(monkeypatch, tmp_path, "--no-team-recaps").items]
+    assert "team_recap" not in kinds and kinds[-1] == "full_time"

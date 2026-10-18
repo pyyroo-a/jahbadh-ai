@@ -53,6 +53,7 @@ def test_kind_for():
     assert kind_for(Moment(id="x", kind="full_time", t=5400, label="FT")) == "recap"
     assert kind_for(Moment(id="x", kind="spotlight", t=5400, player_id="RMU-33", label="S")) == "spotlight"
     assert kind_for(Moment(id="x", kind="goal", t=900, label="G")) == "commentary"
+    assert kind_for(Moment(id="x", kind="team_recap", t=5400, team_id="RMU", label="R")) == "recap"
 
 
 def test_writer_bookkeeping_is_tidied_but_truth_is_not():

@@ -1,7 +1,7 @@
 """Run the desk over a saved match:
 
     python -m jahbadh.agents data/generated/match-042 [--limit N] [--personas pundit,casual,fantasy]
-        [--languages en,ar,es] [--concurrency 3] [--no-spotlight] [--mermaid]
+        [--languages en,ar,es] [--concurrency 3] [--no-spotlight] [--no-team-recaps] [--mermaid]
 
 Writes MATCH_DIR/desk.json with every approved claim, render and rejection, and prints a summary.
 """
@@ -20,7 +20,7 @@ from jahbadh.agents.llm import make_chat_client
 from jahbadh.agents.localize import AzureTranslator
 from jahbadh.agents.moments import detect_moments
 from jahbadh.agents.pipeline import run_desk, workflow_mermaid
-from jahbadh.agents.spotlight import spotlight_moments
+from jahbadh.agents.spotlight import spotlight_moments, team_recap_moments
 from jahbadh.simulator.io import load_match
 
 
@@ -40,6 +40,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--languages", default="en,ar,es")
     parser.add_argument("--concurrency", type=int, default=3)
     parser.add_argument("--no-spotlight", action="store_true", help="skip the player spotlights")
+    parser.add_argument("--no-team-recaps", action="store_true", help="skip the per-club full-time recaps")
     parser.add_argument("--mermaid", action="store_true", help="print the per-moment workflow and exit")
     args = parser.parse_args(argv)
 
@@ -66,6 +67,8 @@ def main(argv: list[str] | None = None) -> int:
     if not args.no_spotlight:
         spotlights = spotlight_moments(match)
         moments = moments[:-1] + spotlights + moments[-1:]          # full time stays last
+    if not args.no_team_recaps:
+        moments = moments[:-1] + team_recap_moments(match) + moments[-1:]
     if args.limit is not None:
         full_time = moments[-1]
         moments = moments[:args.limit] + ([full_time] if full_time not in moments[:args.limit] else [])

@@ -103,6 +103,8 @@ PERSONA_STYLES = {
 KIND_FOCUS = {
     "spotlight": "Investigate the spotlight player: involvement, chances, progression, defending.",
     "full_time": "Investigate the whole match: xG for both teams, momentum, key players and turning points.",
+    "team_recap": "Investigate the whole match from this moment's team's side: their chances, pressing, territory, "
+                  "key players and turning points. Stay neutral and factual: no cheering, no blame.",
 }
 
 
@@ -110,6 +112,8 @@ def _base(run: "MomentRun") -> str:
     focus = KIND_FOCUS.get(run.moment.kind, "Investigate this moment.")
     if run.moment.player_id:
         focus += f" The player is {run.moment.player_id}."
+    if run.moment.kind == "team_recap":
+        focus += f" The team is {run.moment.team_id}."
     return (f"{moment_context(run.desk.match, run.moment)}\n\n{focus}\n"
             f"Tools only return data up to match clock {clock(run.moment.horizon)}.")
 

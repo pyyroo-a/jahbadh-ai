@@ -1,5 +1,5 @@
 from fakes import demo_match, make_match, pr, static_tracking
-from jahbadh.agents.spotlight import spotlight_moment, spotlight_moments
+from jahbadh.agents.spotlight import spotlight_moment, spotlight_moments, team_recap_moments
 from jahbadh.analytics import player_rankings
 
 
@@ -23,3 +23,10 @@ def test_spotlight_moment_for_any_player():
     player = m.meta.away.players[3]
     mo = spotlight_moment(m, player.id, "on request")
     assert mo.team_id == "RMU" and mo.player_id == player.id and mo.label == f"Spotlight: {player.name} (on request)"
+
+
+def test_one_team_recap_per_club_home_first():
+    ms = team_recap_moments(demo_match())
+    assert [(m.id, m.team_id, m.kind, m.t) for m in ms] == [("team_recap-NBR", "NBR", "team_recap", 5400),
+                                                            ("team_recap-RMU", "RMU", "team_recap", 5400)]
+    assert [m.label for m in ms] == ["Full-time recap for Northbridge FC", "Full-time recap for Rivermouth United"]
