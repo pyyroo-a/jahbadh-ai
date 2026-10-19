@@ -14,7 +14,7 @@ const info: MatchInfo = {
 };
 const ev = (id: number, team_id: string, player_id: string | null, related: string | null = null): EventLine => ({
   id, t: id, minute: 1, type: "TACKLE", team_id, player_id, related_player_id: related, x: 0, y: 0,
-  end_x: null, end_y: null, outcome: true, xg: null, lines: { en: "", ar: "", es: "" },
+  end_x: null, end_y: null, outcome: true, xg: null, speed_kmh: null, lines: { en: "", ar: "", es: "" },
 });
 const eventsById = { 1: ev(1, "NBR", "NBR-9"), 2: ev(2, "RMU", "RMU-4", "NBR-9"), 3: ev(3, "RMU", null) };
 const metric = (id: string, name: string, subject: string): Metric => ({
@@ -74,7 +74,7 @@ describe("rankClaims", () => {
 describe("metricSeries", () => {
   const state = (t: number, extra: Partial<MatchState>): MatchState => ({
     t, minute: t / 60 + 1, score: {}, xg: { NBR: 0, RMU: 0 }, momentum: null, field_tilt: null, ppda: {}, shape: {},
-    formations: {}, rhythm: null, pass_difficulty: {}, ...extra,
+    formations: {}, rhythm: null, pass_difficulty: {}, pass_speed: {}, ...extra,
   });
   const states = [state(0, {}), state(60, { xg: { NBR: 0.1, RMU: 0.4 }, field_tilt: 0.62 }),
     state(120, { rhythm: { ...metrics[3], value: 3.8 }, ppda: { NBR: null, RMU: 9.5 } })];

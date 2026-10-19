@@ -16,7 +16,7 @@ const msg = (id: number, kind: StreamMessage["kind"], data: unknown): StreamMess
   ({ id, kind, data }) as StreamMessage;
 const ev = (id: number, t = id): EventLine => ({
   id, t, minute: Math.floor(t / 60) + 1, type: "PASS", team_id: "NBR", player_id: "NBR-9", related_player_id: null,
-  x: 50, y: 30, end_x: 60, end_y: 30, outcome: true, xg: null, lines: { en: "pass", ar: "تمريرة", es: "pase" },
+  x: 50, y: 30, end_x: 60, end_y: 30, outcome: true, xg: null, speed_kmh: null, lines: { en: "pass", ar: "تمريرة", es: "pase" },
 });
 const moment = (id: string, t = 885): Moment =>
   ({ id, kind: "goal", t, team_id: "NBR", player_id: null, event_ids: [], label: `${id} label` });

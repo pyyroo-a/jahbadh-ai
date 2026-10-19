@@ -1,7 +1,7 @@
 import pytest
 
 from conftest import make_match, pass_xy
-from jahbadh.analytics import pass_quality
+from jahbadh.analytics import pass_quality, pass_speed
 
 
 def odds(e, p_success, outcome=True):
@@ -56,3 +56,20 @@ def test_pass_quality_rejects_bad_windows_and_subjects(sim_match):
 def test_on_the_demo_match_completed_passes_were_easier(sim_match):
     q = pass_quality(sim_match, "RMU")
     assert 0.03 <= q.value <= 0.7 and q.data["hardest_completed"]["difficulty"] >= q.value
+
+
+def test_pass_speed_is_the_mean_of_the_teams_passes_and_labelled_synthetic():
+    def fast(e, kmh):
+        return e.model_copy(update={"detail": {"p_success": 0.8, "speed_kmh": kmh}})
+    m = make_match([fast(pass_xy(1, "NBR", "NBR-2", (50, 30), (70, 30)), 40.0),
+                    fast(pass_xy(2, "NBR", "NBR-2", (50, 30), (90, 30)), 70.0),
+                    fast(pass_xy(3, "RMU", "RMU-2", (50, 30), (20, 30)), 90.0)])
+    team = pass_speed(m, "NBR")
+    assert team.name == "pass_speed" and team.unit == "km/h" and team.value == 55.0
+    assert team.data == {"passes": 2, "max": 70.0, "synthetic": True} and team.evidence_event_ids == [1, 2]
+    assert pass_speed(m, "NBR-2").value == 55.0
+
+
+def test_no_passes_means_no_pass_speed():
+    m = make_match([])
+    assert pass_speed(m, "NBR").value is None and pass_speed(m, "NBR").data["max"] is None

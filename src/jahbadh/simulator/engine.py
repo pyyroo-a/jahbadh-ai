@@ -16,6 +16,7 @@ from jahbadh.pitch import LENGTH, WIDTH, attack_x, clamp, third
 from jahbadh.schemas import Event, EventType, Match, MatchMeta, ScriptedChange, Team
 from jahbadh.simulator.formations import slots_for
 from jahbadh.simulator.movement import TeamState, step_positions
+from jahbadh.simulator.pass_speed import add_pass_speeds
 from jahbadh.simulator.shot_speed import add_shot_speeds
 from jahbadh.simulator.storyline import apply_due_changes
 from jahbadh.simulator.teams import DEFAULT_TEAMS, TeamSpec, make_teams
@@ -353,4 +354,5 @@ def simulate_match(seed: int, match_id: str | None = None, storyline: list[Scrip
                    home_spec: TeamSpec = DEFAULT_TEAMS[0], away_spec: TeamSpec = DEFAULT_TEAMS[1]) -> Match:
     match = _Engine(seed, match_id or f"match-{seed:03d}", list(storyline or []), home_spec, away_spec).run()
     add_shot_speeds(match, seed)                  # after the run, on its own random stream
+    add_pass_speeds(match, seed)                  # likewise, on another stream
     return match

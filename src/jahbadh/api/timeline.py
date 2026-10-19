@@ -33,7 +33,8 @@ def match_state(match: Match, t: float) -> MatchState:
     if t <= 0:
         return MatchState(t=0.0, minute=1, score={team: 0 for team in teams}, xg={team: 0.0 for team in teams},
                           momentum=None, field_tilt=None, ppda={team: None for team in teams}, shape={},
-                          formations=formations, rhythm=None, pass_difficulty={team: None for team in teams})
+                          formations=formations, rhythm=None, pass_difficulty={team: None for team in teams},
+                          pass_speed={team: None for team in teams})
     start = max(0.0, t - STATE_WINDOW_S)
     return MatchState(
         t=float(t), minute=_minute(t), score=score_at(match, t),
@@ -43,13 +44,15 @@ def match_state(match: Match, t: float) -> MatchState:
         ppda={team: an.ppda(match, team, start, t).value for team in teams},
         shape={team: an.average_positions(match, team, start, t) for team in teams},
         formations=formations, rhythm=an.game_rhythm(match, start, t),
-        pass_difficulty={team: an.pass_quality(match, team, start, t).value for team in teams})
+        pass_difficulty={team: an.pass_quality(match, team, start, t).value for team in teams},
+        pass_speed={team: an.pass_speed(match, team, start, t).value for team in teams})
 
 
 def event_line(match: Match, e: Event) -> EventLine:
     return EventLine(id=e.id, t=e.t, minute=e.minute, type=e.type, team_id=e.team_id, player_id=e.player_id,
                      related_player_id=e.related_player_id, x=e.x, y=e.y, end_x=e.end_x, end_y=e.end_y,
-                     outcome=e.outcome, xg=e.xg, lines=event_lines(match, e))
+                     outcome=e.outcome, xg=e.xg, speed_kmh=e.detail.get("speed_kmh") if e.type in ("PASS", "SHOT") else None,
+                     lines=event_lines(match, e))
 
 
 def _order(i: StreamItem) -> int:

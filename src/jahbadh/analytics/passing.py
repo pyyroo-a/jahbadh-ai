@@ -1,4 +1,4 @@
-"""Pass quality: how far, how accurate, and how hard the passes were.
+"""Pass quality: how far, how accurate, and how hard the passes were. Also pass speed (synthetic).
 
 Difficulty is 1 minus the simulator's own chance that the pass would be completed (each PASS keeps it as
 detail["p_success"], 0.3 to 0.97). It's the simulator's model of a hard pass (longer, under pressure, into
@@ -45,3 +45,18 @@ def pass_quality(match: Match, subject: str, start: float = 0, end: float = 5400
     return Metric(id=metric_id("pass_quality", subject, start, end), name="pass_quality", subject=subject,
                   window=(start, end), value=mean_difficulty, unit="difficulty",
                   evidence_event_ids=[e.id for e in passes], data=data, note=note)
+
+
+def pass_speed(match: Match, subject: str, start: float = 0, end: float = 5400) -> Metric:
+    """Mean synthetic ball speed of a team's or player's passes (detail["speed_kmh"], from the simulator)."""
+    check_window(start, end)
+    player_team = _team_of(match, subject)
+    team = player_team or subject
+    passes = [e for e in match.events_of(EventType.PASS, team_id=team, start=start, end=end)
+              if (player_team is None or e.player_id == subject) and "speed_kmh" in e.detail]
+    speeds = [float(e.detail["speed_kmh"]) for e in passes]
+    return Metric(id=metric_id("pass_speed", subject, start, end), name="pass_speed", subject=subject,
+                  window=(start, end), value=round(sum(speeds) / len(speeds), 1) if speeds else None, unit="km/h",
+                  evidence_event_ids=[e.id for e in passes],
+                  data={"passes": len(passes), "max": max(speeds, default=None), "synthetic": True},
+                  note=None if passes else "No passes with a simulated speed in this window.")

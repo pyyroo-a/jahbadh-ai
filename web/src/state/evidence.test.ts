@@ -4,7 +4,7 @@ import { evidenceCount, evidenceOf, rejectionStatus } from "./evidence";
 
 const ev = (id: number): EventLine => ({
   id, t: id, minute: 1, type: "PASS", team_id: "NBR", player_id: null, related_player_id: null, x: 0, y: 0,
-  end_x: null, end_y: null, outcome: true, xg: null, lines: { en: "", ar: "", es: "" },
+  end_x: null, end_y: null, outcome: true, xg: null, speed_kmh: null, lines: { en: "", ar: "", es: "" },
 });
 const metric = (id: string): Metric => ({
   id, name: id.split(":")[0], subject: "NBR", window: [0, 600], value: 0.5, unit: "share", evidence_event_ids: [],

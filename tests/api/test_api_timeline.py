@@ -68,12 +68,12 @@ def test_event_line_payload_keys_are_the_protocol():
     line = event_line(m, m.event(2))
     assert isinstance(line, EventLine) and line.lines["en"] == "Marek Quill finds Quinn Yilmaz" and line.minute == 1
     assert set(line.model_dump()) == {"id", "t", "minute", "type", "team_id", "player_id", "related_player_id",
-                                      "x", "y", "end_x", "end_y", "outcome", "xg", "lines"}
+                                      "x", "y", "end_x", "end_y", "outcome", "xg", "speed_kmh", "lines"}
 
 
 def test_match_state_payload_keys_are_the_protocol():
     assert set(MatchState.model_fields) == {"t", "minute", "score", "xg", "momentum", "field_tilt", "ppda", "shape",
-                                            "formations", "rhythm", "pass_difficulty"}
+                                            "formations", "rhythm", "pass_difficulty", "pass_speed"}
 
 
 def test_cues_ride_in_the_timeline_at_their_time():
@@ -101,3 +101,16 @@ def test_claim_cues_arrive_right_after_their_feed_item():
         mine = [k for k, i in enumerate(tl) if i.kind == "cue" and i.data.type == "claim"
                 and i.data.id.startswith(f"claim-{item.moment.id}:")]
         assert len(mine) == len(item.claims) and all(k > feed and tl[k].t == tl[feed].t for k in mine)
+
+
+def test_event_lines_and_states_carry_pass_speed():
+    m = demo_match()
+    a_pass = next(e for e in m.events if e.type == "PASS")
+    a_shot = next(e for e in m.events if e.type == "SHOT")
+    a_card = next(e for e in m.events if e.type == "CARD")
+    assert event_line(m, a_pass).speed_kmh == a_pass.detail["speed_kmh"]
+    assert event_line(m, a_shot).speed_kmh == a_shot.detail["speed_kmh"]
+    assert event_line(m, a_card).speed_kmh is None
+    s = match_state(m, 3600)
+    assert set(s.pass_speed) == {"NBR", "RMU"} and all(20 <= v <= 100 for v in s.pass_speed.values())
+    assert match_state(m, 0).pass_speed == {"NBR": None, "RMU": None}

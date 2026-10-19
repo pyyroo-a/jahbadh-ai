@@ -133,6 +133,7 @@ export interface EventLine {
   end_y: number | null;
   outcome: boolean | null;
   xg: number | null;
+  speed_kmh: number | null;          // synthetic ball speed, on passes and shots only
   lines: Record<Language, string>;
 }
 
@@ -148,6 +149,7 @@ export interface MatchState {
   formations: Record<string, string>;
   rhythm: Metric | null;
   pass_difficulty: Record<string, number | null>;
+  pass_speed: Record<string, number | null>;   // each team's mean synthetic pass speed, km/h
 }
 
 export interface RendersUpdate {

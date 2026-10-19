@@ -57,7 +57,7 @@ describe("metricLayer", () => {
 describe("eventLayer", () => {
   const ev = (id: number, type: EventLine["type"], end: [number, number] | null): EventLine => ({
     id, t: id, minute: 1, type, team_id: "NBR", player_id: null, related_player_id: null, x: 50, y: 60,
-    end_x: end?.[0] ?? null, end_y: end?.[1] ?? null, outcome: true, xg: null, lines: { en: "", ar: "", es: "" },
+    end_x: end?.[0] ?? null, end_y: end?.[1] ?? null, outcome: true, xg: null, speed_kmh: null, lines: { en: "", ar: "", es: "" },
   });
 
   it("turns passes into arrows and the rest into points", () => {

@@ -42,6 +42,7 @@ class EventLine(BaseModel):
     end_y: float | None
     outcome: bool | None
     xg: float | None
+    speed_kmh: float | None           # synthetic ball speed, on passes and shots only
     lines: dict[Language, str]
 
 
@@ -58,6 +59,7 @@ class MatchState(BaseModel):
     formations: dict[str, str]
     rhythm: Metric | None             # game_rhythm, controlled to chaotic
     pass_difficulty: dict[str, float | None]   # each team's mean pass difficulty
+    pass_speed: dict[str, float | None]        # each team's mean synthetic pass speed, km/h
 
 
 class RendersUpdate(BaseModel):

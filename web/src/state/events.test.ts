@@ -4,7 +4,7 @@ import { visibleEvents } from "./events";
 
 const ev = (id: number, type: EventType): EventLine => ({
   id, t: id, minute: 1, type, team_id: "NBR", player_id: null, related_player_id: null, x: 0, y: 0,
-  end_x: null, end_y: null, outcome: true, xg: null, lines: { en: "", ar: "", es: "" },
+  end_x: null, end_y: null, outcome: true, xg: null, speed_kmh: null, lines: { en: "", ar: "", es: "" },
 });
 const pass = (id: number) => ev(id, "PASS");
 const goal = (id: number) => ev(id, "GOAL");
