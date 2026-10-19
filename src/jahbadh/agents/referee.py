@@ -21,11 +21,15 @@ async def judge(run: MomentRun, claims: list[Claim], mode: Literal["support", "f
         reply = await ask(run.desk.agent("referee"), judge_prompt(run, claims, mode, originals), Verdicts)
     except AgentOutputError:
         return {c.id: "referee unavailable" for c in claims}
-    verdicts = {v.claim_id: v for v in reply.verdicts}
+    verdicts: dict[str, list] = {}
+    for v in reply.verdicts:
+        verdicts.setdefault(v.claim_id, []).append(v)
     result: dict[str, str | None] = {}
     for c in claims:
-        v = verdicts.get(c.id)
-        result[c.id] = "referee gave no verdict" if v is None else None if v.supported else (v.reason or "not supported")
+        vs = verdicts.get(c.id)
+        against = [v for v in vs or [] if not v.supported]      # duplicates fail closed: any rejection wins
+        result[c.id] = ("referee gave no verdict" if not vs
+                        else (against[0].reason or "not supported") if against else None)
     return result
 
 

@@ -5,6 +5,7 @@ file that can't be read or doesn't make sense counts as the cap reached: live mo
 """
 
 import json
+import logging
 import os
 from collections.abc import Callable
 from datetime import UTC, date, datetime
@@ -28,6 +29,8 @@ class DailyLimit:
             if not isinstance(day, str) or not isinstance(used, int) or isinstance(used, bool) or used < 0:
                 raise ValueError(saved)
         except (OSError, ValueError, KeyError, TypeError):
+            logging.getLogger(__name__).warning("Live counter file %s can't be read, so live mode stays closed today",
+                                                self.path)
             return self.per_day
         return used if day == self.today().isoformat() else 0
 

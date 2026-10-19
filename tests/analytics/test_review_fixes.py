@@ -48,3 +48,15 @@ def test_unknown_team_raises_instead_of_returning_zero(sim_match, fn):
 def test_rankings_unknown_team_raises(sim_match):
     with pytest.raises(KeyError):
         player_rankings(sim_match, team_id="nbr")
+
+
+def test_whole_second_windows_keep_their_ids():
+    from jahbadh.analytics.base import metric_id
+    assert metric_id("ppda", "NBR", 0, 5400) == "ppda:NBR:0-5400"
+    assert metric_id("zone_overloads", "RMU", 0, 900, margin=1) == "zone_overloads:RMU:0-900:margin=1"
+
+
+def test_fractional_windows_get_their_own_id():
+    from jahbadh.analytics.base import metric_id
+    assert metric_id("ppda", "NBR", 4860.5, 5400) == "ppda:NBR:4860.5-5400"
+    assert metric_id("ppda", "NBR", 4860.5, 5400) != metric_id("ppda", "NBR", 4860, 5400)

@@ -136,7 +136,8 @@ class LiveRun:
 
     async def _play(self) -> None:
         thinking = [StreamItem(t=m.t, kind="thinking", data=m) for m in self.moments]
-        for item in _sorted(match_timeline(self.match, precomputed=False) + thinking):
+        timeline = await asyncio.to_thread(match_timeline, self.match, precomputed=False)   # about 1.4 s of work
+        for item in _sorted(timeline + thinking):
             if self._nobody_watching():
                 await self.cancel()
                 return

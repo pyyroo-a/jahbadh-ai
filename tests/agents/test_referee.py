@@ -74,3 +74,11 @@ def test_the_judge_checks_which_side_a_share_favours_and_that_words_fit_numbers(
         assert rule in judge
     for rule in ("below 50%", "under 0.3 xG"):
         assert rule in writer
+
+
+def test_duplicate_verdicts_fail_closed():
+    run, good = grounded_claim()
+    run.desk.client.script["referee"] = [Verdicts(verdicts=[
+        Verdict(claim_id=good.id, supported=False, reason="not supported by the evidence"),
+        Verdict(claim_id=good.id, supported=True, reason="")])]
+    assert asyncio.run(judge(run, [good])) == {good.id: "not supported by the evidence"}

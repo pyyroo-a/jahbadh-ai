@@ -23,7 +23,7 @@ def check_window(start: float, end: float) -> None:
 def metric_id(name: str, subject: str, start: float, end: float, **params: object) -> str:
     """Stable id, e.g. "ppda:NBR:0-5400". Pass any non-default parameter that changes the value
     (e.g. margin=1) so two different values can never share an id: "zone_overloads:RMU:0-900:margin=1"."""
-    base = f"{name}:{subject}:{int(start)}-{int(end)}"
+    base = f"{name}:{subject}:{start:g}-{end:g}"
     return base + "".join(f":{k}={v}" for k, v in sorted(params.items()))
 
 

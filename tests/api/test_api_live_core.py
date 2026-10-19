@@ -331,3 +331,34 @@ def test_combos_with_one_persona_share_its_english(monkeypatch):
     assert len(english) == 16 and len({m for m, _, _ in english}) == 16       # once per moment, never twice
     arabic = [c for c in calls if c[1] == "ar"]
     assert len(arabic) == 16 and all(has for _, _, has in arabic)            # each starts from the shared English
+
+
+def test_live_start_builds_the_timeline_off_the_event_loop(monkeypatch):
+    import threading
+
+    from jahbadh.api import live
+    built_on = []
+    real = live.match_timeline
+
+    def spy(*a, **kw):
+        built_on.append(threading.get_ident())
+        return real(*a, **kw)
+
+    monkeypatch.setattr(live, "match_timeline", spy)
+    run = run_with()
+
+    async def go():
+        loop_thread = threading.get_ident()
+        await drain(run)
+        return loop_thread
+
+    loop_thread = asyncio.run(go())
+    assert built_on and all(t != loop_thread for t in built_on)
+
+
+def test_a_corrupt_counter_file_is_logged_with_its_path(tmp_path, caplog):
+    path = tmp_path / "live.json"
+    path.write_text("{not json")
+    with caplog.at_level("WARNING"):
+        assert DailyLimit(path, per_day=3).remaining() == 0
+    assert str(path) in caplog.text
