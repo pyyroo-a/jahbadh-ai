@@ -108,12 +108,21 @@ def test_combo_rejects_unknown_personas(tmp_path):
         assert accepted == [True, True, False]
 
 
-def test_a_combo_after_full_time_is_not_accepted(tmp_path):
+def test_combo_after_full_time_says_the_match_has_finished(tmp_path):
     with TestClient(live_app(tmp_path)) as c:
         rid = c.post("/api/live").json()["run_id"]
         finish(c, rid)
         assert c.post(f"/api/live/{rid}/combo", json={"persona": "casual", "language": "en"}).json() == \
-            {"accepted": False}
+            {"accepted": False, "reason": "finished"}
+
+
+def test_a_third_combo_says_the_limit_is_reached(tmp_path):
+    with TestClient(live_app(tmp_path, sleep=blocked)) as c:
+        rid = c.post("/api/live").json()["run_id"]
+        replies = [c.post(f"/api/live/{rid}/combo", json={"persona": p, "language": lang}).json()
+                   for p, lang in (("casual", "en"), ("pundit", "ar"), ("fantasy", "es"))]
+        assert replies == [{"accepted": True, "reason": None}, {"accepted": True, "reason": None},
+                           {"accepted": False, "reason": "limit"}]
 
 
 def test_config_reports_live_runs_left(tmp_path):

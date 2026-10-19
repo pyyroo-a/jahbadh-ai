@@ -16,6 +16,7 @@ import TopBar from "./components/TopBar";
 import { comboWaiting, initialDesk, reduce, replaySkip } from "./state/desk";
 import type { Selection } from "./state/evidence";
 import { highlights } from "./state/highlights";
+import { COMBO_NOTICES } from "./state/labels";
 import { activeCues, tickingClock } from "./state/overlay";
 import { claimTags, inFocus, type Mode } from "./state/personal";
 
@@ -82,14 +83,15 @@ export default function App() {
 
   // Live mode publishes the pundit in English; any other combo is rendered once someone asks for it.
   function pick(p: Persona, l: Language) {
+    if (p !== persona) setSelection(null);       // a new persona starts from the overview
     setPersona(p);
     setLanguage(l);
     const key = `${p}|${l}`;
     if (!liveRunId || desk.info?.mode !== "live" || key === "pundit|en" || requested.has(key)) return;
-    addCombo(liveRunId, p, l).then(({ accepted }) => {
+    addCombo(liveRunId, p, l).then(({ accepted, reason }) => {
       if (accepted) setRequested((s) => new Set(s).add(key));
-      else setNotice("This live match already has its two extra versions.");
-    }).catch(() => setNotice("This live match already has its two extra versions."));
+      else setNotice(COMBO_NOTICES[reason ?? "limit"]);
+    }).catch(() => setNotice(COMBO_NOTICES.failed));
   }
   const waiting = (item: FeedItem) => comboWaiting(requested, item, persona, language, desk.ended !== null);
 
@@ -157,7 +159,7 @@ export default function App() {
             onPick={(momentId, claimId) => setSelection({ momentId, claimId })} />
         </ControlBar>
       )}
-      {info && <ModeBar info={info} choices={choices} mode={mode} onMode={setMode} />}
+      {info && <ModeBar info={info} choices={choices} mode={mode} onMode={(m) => { setMode(m); setSelection(null); }} />}
       <HighlightsStrip strip={strip} onPick={pickMoment} />
       {problem && !desk.ended && <div className="notice">{problem}</div>}
       <main className="columns">
@@ -168,10 +170,12 @@ export default function App() {
             heatmap={mode.kind === "player" ? follow?.heatmap ?? null : null}
             overlayControls={<OverlayPreview on={overlayOn} onToggle={() => setOverlayOn(!overlayOn)}
               feedUrl={liveRunId ? `/api/live/${liveRunId}/overlay` : `/api/replay/${info.match_id}/overlay`} />}
+            onOverview={() => setSelection(null)}
             onPitch={overlayOn && <LowerThirds cues={activeCues(desk.cues, onAir)} language={language} info={info} />}>
             {mode.kind === "player" && (
               <FollowPanel key={mode.playerId} info={info} playerId={mode.playerId} clock={clock} runId={liveRunId}
-                items={desk.items} persona={persona} language={language} onFollow={setFollow} />
+                items={desk.items} persona={persona} language={language} onFollow={setFollow}
+                onSpent={() => getConfig().then((c) => setLiveRemaining(c.live_remaining)).catch(() => undefined)} />
             )}
             {choice && (
               <MetricFocus info={info} choice={choice} states={desk.states} pinned={pinned} persona={persona}

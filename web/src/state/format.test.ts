@@ -18,6 +18,7 @@ describe("formatMetric", () => {
     expect(formatMetric(metric("ppda", "RMU", 17, "passes/def_action"), info).value).toBe("17.0");
     expect(formatMetric(metric("line_height", "NBR", 29.198, "m"), info).value).toBe("29.2 m");
     expect(formatMetric(metric("shot_map", "NBR", 15, "shots"), info).value).toBe("15");
+    expect(formatMetric(metric("match_stats", "NBR", 7, "shots"), info).value).toBe("7 shots");
     expect(formatMetric(metric("momentum", "MATCH", 0.216, "home_share"), info).value).toBe("22%");
     expect(formatMetric(metric("zone_overloads", "NBR", 0.321, "share_of_seconds"), info).value).toBe("32%");
     expect(formatMetric(metric("pass_quality", "NBR-10", 0.178, "difficulty"), info).value).toBe("0.18");

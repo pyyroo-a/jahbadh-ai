@@ -148,5 +148,6 @@ async def live_spotlight(request: Request, run_id: str, body: SpotlightRequest) 
 async def live_combo(request: Request, run_id: str, body: ComboRequest) -> dict:
     run = _run(request, run_id)
     if run.finished:                                  # the history is closed, so renders would be wasted calls
-        return {"accepted": False}
-    return {"accepted": run.add_combo(body.persona, body.language)}
+        return {"accepted": False, "reason": "finished"}
+    accepted = run.add_combo(body.persona, body.language)
+    return {"accepted": accepted, "reason": None if accepted else "finished" if run.finished else "limit"}

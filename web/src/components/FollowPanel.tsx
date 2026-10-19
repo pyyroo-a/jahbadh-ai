@@ -12,12 +12,13 @@ type Props = {
   persona: Persona;
   language: Language;
   onFollow: (f: PlayerFollow | null) => void;
+  onSpent: () => void;             // a spotlight used a live action, so the count needs a refresh
 };
 
 const num = (v: unknown, digits: number, unit = "") =>
   typeof v === "number" ? `${v.toFixed(digits)}${unit}` : "no data";
 
-export default function FollowPanel({ info, playerId, clock, runId, items, persona, language, onFollow }: Props) {
+export default function FollowPanel({ info, playerId, clock, runId, items, persona, language, onFollow, onSpent }: Props) {
   const [follow, setFollow] = useState<PlayerFollow | null>(null);
   const [asked, setAsked] = useState<string | null>(null);
   const asOf = Math.min(5400, Math.floor(clock / 60) * 60);      // the start of the current match minute
@@ -35,7 +36,7 @@ export default function FollowPanel({ info, playerId, clock, runId, items, perso
 
   const spotlights = items.filter((i) => i.moment.kind === "spotlight" && i.moment.player_id === playerId);
   const ask = () => runId && spotlight(runId, playerId)
-    .then(() => setAsked("The desk is on it. The spotlight lands in the feed shortly."))
+    .then(() => { setAsked("The desk is on it. The spotlight lands in the feed shortly."); onSpent(); })
     .catch((e) => setAsked(e instanceof ApiError ? e.detail : "The desk couldn't take that request."));
 
   const physical = follow?.physical.data ?? {};

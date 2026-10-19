@@ -39,7 +39,7 @@ export const spotlight = (runId: string, playerId: string) =>
   post<{ moment_id: string }>(`/api/live/${runId}/spotlight`, { player_id: playerId });
 
 export const addCombo = (runId: string, persona: Persona, language: Language) =>
-  post<{ accepted: boolean }>(`/api/live/${runId}/combo`, { persona, language });
+  post<{ accepted: boolean; reason: "finished" | "limit" | null }>(`/api/live/${runId}/combo`, { persona, language });
 
 export const replayUrl = (matchId: string, speed: number, fromT = 0) =>
   `/api/replay/${matchId}/stream?speed=${speed}&from_t=${fromT}`;

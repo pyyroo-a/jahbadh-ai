@@ -10,6 +10,7 @@ const LABELS: Record<string, string> = {
 };
 const SHARES = new Set(["share", "home_share", "share_of_seconds"]);
 const COUNTS = new Set(["shots", "players", "edges", "samples", "passes", "goals", "cards", "touches", "events"]);
+const SAYS_UNIT = new Set(["match_stats"]);           // its label doesn't name what it counts, so the value does
 
 function value(v: number | null, unit: string): string {
   if (v === null) return "no data";
@@ -41,7 +42,7 @@ function minutes([start, end]: [number, number]): string {
 
 export function formatMetric(m: Metric, info: MatchInfo): { value: string; label: string; sub: string } {
   return {
-    value: value(m.value, m.unit),
+    value: SAYS_UNIT.has(m.name) && m.value !== null ? `${value(m.value, m.unit)} ${m.unit}` : value(m.value, m.unit),
     label: LABELS[m.name] ?? m.name.replaceAll("_", " "),
     sub: `${subjectName(m.subject, info)} · ${minutes(m.window)}`,
   };

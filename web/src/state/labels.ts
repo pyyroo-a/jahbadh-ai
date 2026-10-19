@@ -17,6 +17,12 @@ export const LAYER_LABELS: Record<Rejection["layer"], string> = {
   localization: "Translation check",
 };
 
+export const COMBO_NOTICES = {
+  limit: "This live match already has its two extra versions.",
+  finished: "This live match has ended, so there's nothing new to add.",
+  failed: "That version couldn't be added just now. Please try again.",
+};
+
 export const NOTES: Record<string, string> = {
   "persona fallback": "Shown in the pundit's words",
   "english fallback": "Shown in English",
