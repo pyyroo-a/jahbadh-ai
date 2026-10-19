@@ -6,7 +6,7 @@ from typing import Any, Protocol
 
 from agent_framework import Agent
 
-from jahbadh.agents.contracts import Language, Moment, Persona
+from jahbadh.agents.contracts import Claim, Language, Moment, Persona, Rejection
 from jahbadh.agents.evidence import EvidenceStore
 from jahbadh.agents.llm import AgentName, make_agent
 from jahbadh.agents.prompts import INSTRUCTIONS
@@ -18,6 +18,13 @@ class Translator(Protocol):
     def translate(self, texts: list[str], to: str, keep: list[str]) -> list[str]: ...
 
 
+class Planter(Protocol):
+    """The eval's hook: adds known-false claims to the first drafts and hears what the Referee made of them."""
+    def __call__(self, run: "MomentRun", drafts: list[Claim]) -> list[Claim]: ...
+    def is_planted(self, claim_id: str) -> bool: ...
+    def record(self, claim: Claim, rejection: Rejection | None) -> None: ...
+
+
 @dataclass
 class Desk:
     client: Any                      # any Agent Framework chat client; None is fine for drawing the workflow
@@ -26,6 +33,7 @@ class Desk:
     personas: tuple[Persona, ...] = ("pundit",)
     languages: tuple[Language, ...] = ("en",)
     effort: str = "low"
+    planter: Planter | None = None   # only the eval sets this; planted claims are checked, then dropped
 
     def agent(self, name: AgentName, tools: Sequence[Callable] = ()) -> Agent:
         return make_agent(self.client, name, INSTRUCTIONS[name], tools, self.effort)

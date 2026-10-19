@@ -73,6 +73,8 @@ class WriterStep(_Step):
         else:
             claims = await write(self.run, state.findings)
             stats["drafted"] += len(claims)
+            if self.run.desk.planter:             # the eval's false claims ride along, outside the stats
+                claims = claims + self.run.desk.planter(self.run, claims)
             update = {"pending": claims}
         await ctx.send_message(state.model_copy(update=update | {"stats": stats}))
 
@@ -81,6 +83,13 @@ class RefereeStep(_Step):
     @handler
     async def handle(self, state: MomentState, ctx: WorkflowContext[MomentState]) -> None:
         approved, rejections = await referee(self.run, state.pending, state.attempt)
+        planter = self.run.desk.planter
+        if planter:                               # record each planted claim's verdict, then drop it for good
+            planted = {c.id: c for c in state.pending if planter.is_planted(c.id)}
+            for cid, claim in planted.items():
+                planter.record(claim, next((r for r in rejections if r.claim_id == cid), None))
+            approved = [c for c in approved if c.id not in planted]
+            rejections = [r for r in rejections if r.claim_id not in planted]
         rejected_ids = {r.claim_id for r in rejections}
         reasons = {r.claim_id: r.reasons for r in rejections}
         failed = [c for c in state.pending if c.id in rejected_ids]
