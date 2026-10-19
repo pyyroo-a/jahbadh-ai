@@ -79,8 +79,8 @@ Template lines arrive instantly. Agent lines land one to two minutes after a mom
 
 ### 3. Ball speed
 
-- A synthetic ball speed for passes, worked out from each pass's length and the time until the next event, computed the same way every time. Shots keep their existing synthetic shot speed.
-- First check what the simulator records (pass start and end points, the time of the next event). If the data can't support an honest number, report that to the user before building anything.
+- **Measured 19 Oct, then changed with the user:** the first idea (pass length over the time until the next event) can't give an honest number. The simulator ticks in whole seconds and the gap often includes the receiver's next touch. On the demo match that gave a median of 76 km/h, a 90th percentile of 146 km/h and a top of 249 km/h for 696 completed passes.
+- **So pass speed works the way shot speed already does (user, 19 Oct):** a synthetic speed per pass from its length (longer passes struck harder), kept in a believable range, drawn from its own seed-derived stream. Shots keep their existing synthetic shot speed.
 - It must not change any match: the fingerprint test for seeds 42, 1 and 7 still passes.
 - Labelled "Simulated" wherever it shows: Player watch and the follow panel (a player's average and fastest pass), the Analyst numbers, and the overlay cue feed with `synthetic: true` **(builder's call on the exact spots)**. The agents' tools are not changed, so the showcase stays consistent.
 
@@ -118,8 +118,8 @@ The brief asks the system to "ingest synthetic match events as they happen". The
 - **No keys in the cloud:** the container app has a managed identity that signs in to Foundry and the registry. Translator too, if it allows it without extra setup; if Translator needs a custom domain for that, its key goes in a Container Apps secret and the README says why. Local development keeps using `.env`. If the subscription won't allow the role assignments the identity needs, the Foundry key goes in a Container Apps secret instead and the README says so plainly **(builder's call, agreed 19 Oct)**.
 - **Existing resources stay put:** the Bicep points at the existing Foundry project, the `gpt-5-mini` deployment and the Translator resource (`existing` references) and never creates or deletes a model deployment, so `azd up` and `azd down` can't touch the quota or the model **(builder's call, agreed 19 Oct)**.
 - **Application Insights**, connected to the Foundry project, receives Agent Framework's built-in OpenTelemetry traces, so every agent call shows up in Foundry's Tracing page. Tracing is off when no connection string is set. Stays within the free 5 GB a month.
-- **Bicep with the Azure Developer CLI:** every resource above, plus the budget alerts, as code. `azd up` recreates it all.
-- **Budget alerts** at $50 and $80 (if the student subscription doesn't allow a budget from Bicep, the guide gives the portal clicks).
+- **Bicep with the Azure Developer CLI:** every resource above as code. `azd up` recreates it all.
+- **Budget alerts** at $50 and $80. Microsoft's Cost Management docs list Azure for Students among the offers budgets may not support (the page contradicts itself), so the user tries them in the portal first. If Azure refuses, the fallback is the credit's own hard stop plus a balance check on the Azure Sponsorships page every couple of days, and the README says which one we have.
 - **GitHub Actions:** on every push, pytest and the web tests, build and lint (`npm ci --prefix web`). **Deploying waits for one click (user, 19 Oct):** a "Deploy" workflow the user runs by hand from the Actions tab, which runs the tests again, builds the image and deploys. A commit on main never changes the live demo by itself. It signs in with a federated credential (no stored password). If the university tenant blocks app registrations, use a user-assigned managed identity's federated credential; if that is blocked too, the user deploys by hand with one command.
 - **Content safety:** the deployment's default Foundry content filters are on; the README says so.
 - **`docs/deploy.md`:** a step-by-step guide. Every step that creates something in Azure is a numbered instruction for the user to run, with the exact command or portal clicks, what it costs, what they should see, and how to check it worked.
