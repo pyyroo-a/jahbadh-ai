@@ -88,3 +88,33 @@ def test_plants_are_spread_evenly_across_kinds_and_matches():
     assert all(len(per_match) in (2, 3) for per_match in sched.values())
     assert all(len(set(per_match.values())) == len(per_match) for per_match in sched.values())   # no kind twice in a match
     assert not any(mid.startswith("full_time") for per_match in sched.values() for mid in per_match)
+
+
+def fake_run(moment=SWITCH):
+    from types import SimpleNamespace
+
+    from jahbadh.agents.evidence import EvidenceStore
+    return SimpleNamespace(desk=SimpleNamespace(match=DEMO), store=EvidenceStore(DEMO), moment=moment)
+
+
+def test_plants_only_go_into_drafts_that_pass_the_number_check():
+    from jahbadh.eval.plant import Planter
+    dirty = Claim(id=f"{SWITCH.id}:c1", text="Omar Rasmus linked play (events 1231 and 1232).",
+                  metric_ids=["field_tilt:RMU:0-3601"], event_ids=[1], figures=[])      # unknown metric: fails layer 1
+    clean = Claim(id=f"{SWITCH.id}:c2", text="Omar Rasmus dropped deep to link play.", metric_ids=[],
+                  event_ids=[1], figures=[])
+    planter = Planter(1, {SWITCH.id: "wrong_player"})
+    [planted] = planter(fake_run(), [dirty, clean])
+    assert "Omar Rasmus" not in planted.text and planted.text.endswith("dropped deep to link play.")
+    only_dirty = Planter(1, {SWITCH.id: "wrong_player"})
+    assert only_dirty(fake_run(), [dirty]) == [] and only_dirty.carried == ["wrong_player"]
+
+
+def test_a_plant_remembers_whether_its_source_draft_was_rejected_too():
+    from jahbadh.eval.plant import Planter
+    clean = Claim(id=f"{SWITCH.id}:c2", text="Omar Rasmus dropped deep to link play.", metric_ids=[],
+                  event_ids=[1], figures=[])
+    planter = Planter(1, {SWITCH.id: "wrong_player"})
+    [planted] = planter(fake_run(), [clean])
+    planter.record(planted, None, {clean.id})
+    assert planter.results[0].source_rejected is True and planter.results[0].caught is False

@@ -36,6 +36,10 @@ def to_markdown(report: EvalReport) -> str:
         f"Model: {report.model}. Run: {report.created}. Seeds: {', '.join(map(str, report.seeds))}. "
         f"Key moments: {report.moments}, failed: {report.failures}.",
     ]
+    tainted = sum(p.caught and bool(p.source_rejected) for p in report.plants)
+    if tainted:
+        lines += ["", f"{tainted} of the {s['caught']} caught claims came from a draft the Referee also rejected in "
+                      "the same check."]
     if report.unplaced:
         lines += ["", f"{report.plants_planned} planted claims were planned. {len(report.unplaced)} found no draft "
                       f"to plant into ({', '.join(KIND_LABELS[k].lower() for k in report.unplaced)}), so they "

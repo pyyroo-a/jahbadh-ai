@@ -25,7 +25,8 @@ class StubPlanter:
     def is_planted(self, claim_id):
         return claim_id == PLANTED_ID
 
-    def record(self, claim, rejection):
+    def record(self, claim, rejection, rejected_ids):
+        assert isinstance(rejected_ids, set)
         self.recorded.append((claim.id, rejection))
 
 

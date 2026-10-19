@@ -15,7 +15,7 @@ from jahbadh.eval.report import catch_summary, to_markdown
 
 def plant(n: int, caught: bool, kind="wrong_number", layer="deterministic") -> PlantResult:
     return PlantResult(seed=1 + n % 20, moment_id=f"goal-{n}", claim_id=f"goal-{n}:p1", kind=kind, source_claim_id=None,
-                       text="x", caught=caught, layer=layer if caught else None, reasons=["r"] if caught else [])
+                       text="x", caught=caught, source_rejected=False, layer=layer if caught else None, reasons=["r"] if caught else [])
 
 
 def report_with(caught: int, total: int, matches: int = 20) -> EvalReport:
@@ -84,3 +84,9 @@ def test_the_showcase_recheck_counts_todays_layer_one_failures():
     assert result["published"] == 66 and result["would_fail"] == 17            # measured 19 Oct, as in Plan 3
     assert len(result["failing"]) == 17
     json.dumps(result)
+
+
+def test_the_markdown_says_when_a_catch_came_with_a_rejected_source_draft():
+    report = report_with(caught=3, total=5)
+    report.plants[0] = report.plants[0].model_copy(update={"source_rejected": True})
+    assert "1 of the 3 caught claims came from a draft the Referee also rejected in the same check." in to_markdown(report)

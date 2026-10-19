@@ -86,8 +86,9 @@ class RefereeStep(_Step):
         planter = self.run.desk.planter
         if planter:                               # record each planted claim's verdict, then drop it for good
             planted = {c.id: c for c in state.pending if planter.is_planted(c.id)}
+            failed_ids = {r.claim_id for r in rejections}
             for cid, claim in planted.items():
-                planter.record(claim, next((r for r in rejections if r.claim_id == cid), None))
+                planter.record(claim, next((r for r in rejections if r.claim_id == cid), None), failed_ids)
             approved = [c for c in approved if c.id not in planted]
             rejections = [r for r in rejections if r.claim_id not in planted]
         rejected_ids = {r.claim_id for r in rejections}

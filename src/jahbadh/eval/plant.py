@@ -12,6 +12,7 @@ import numpy as np
 from pydantic import BaseModel
 
 from jahbadh.agents.contracts import Claim, Figure, Moment, Rejection
+from jahbadh.agents.grounding import check_claim
 from jahbadh.schemas import EventType, Match
 
 PlantKind = Literal["wrong_number", "wrong_player", "made_up_event", "wrong_team", "wrong_minute"]
@@ -32,6 +33,7 @@ class PlantResult(BaseModel):
     claim_id: str
     kind: PlantKind
     source_claim_id: str | None
+    source_rejected: bool | None    # the source draft was rejected in the same check (None: no source)
     text: str
     caught: bool
     layer: str | None
@@ -162,10 +164,12 @@ class Planter:
         wanted = ([self.schedule[run.moment.id]] if run.moment.id in self.schedule else []) + self.carried
         if not wanted or run.moment.kind == "full_time":
             return []
+        # only drafts that already pass the number check, so a catch is about the planted change
+        clean = [c for c in drafts if not check_claim(c, run.desk.match, run.store, run.moment.horizon)]
         self.carried, out = [], []
         for kind in wanted:
             self._n += 1
-            planted = plant_claim(kind, drafts, run.desk.match, run.moment, self.rng, self._n)
+            planted = plant_claim(kind, clean, run.desk.match, run.moment, self.rng, self._n)
             if planted is None:
                 self.carried.append(kind)
                 continue
@@ -176,9 +180,9 @@ class Planter:
     def is_planted(self, claim_id: str) -> bool:
         return claim_id in self._planted
 
-    def record(self, claim: Claim, rejection: Rejection | None) -> None:
+    def record(self, claim: Claim, rejection: Rejection | None, rejected_ids: set[str]) -> None:
         kind, source = self._planted[claim.id]
         self.results.append(PlantResult(
             seed=self.seed, moment_id=claim.id.rsplit(":", 1)[0], claim_id=claim.id, kind=kind,
-            source_claim_id=source, text=claim.text, caught=rejection is not None,
+            source_claim_id=source, source_rejected=None if source is None else source in rejected_ids, text=claim.text, caught=rejection is not None,
             layer=rejection.layer if rejection else None, reasons=rejection.reasons if rejection else []))
