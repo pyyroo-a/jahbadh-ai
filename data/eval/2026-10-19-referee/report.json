@@ -1,0 +1,832 @@
+{
+  "seeds": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20
+  ],
+  "model": "gpt-5-mini",
+  "created": "2026-10-19T20:28:29.370729+00:00",
+  "moments": 160,
+  "failures": 0,
+  "first_draft": {
+    "passed": 196,
+    "drafted": 442
+  },
+  "rejections_by_layer": {
+    "deterministic": 223,
+    "semantic": 129
+  },
+  "plants": [
+    {
+      "seed": 1,
+      "moment_id": "big_chance-151",
+      "claim_id": "big_chance-151:p2",
+      "kind": "wrong_number",
+      "source_claim_id": "big_chance-151:c2",
+      "source_rejected": true,
+      "text": "He dominated the opening minutes, seven touches, four passes with 100% completion and 0.649 xG for him, while Northbridge completely owned the final third (team passes 3-2) and showed a detectable middle-right overload consistent with the short build-up (9%, typical 3v1).",
+      "caught": true,
+      "layer": "deterministic",
+      "reasons": [
+        "'2' does not match field_tilt:NBR:0-152 opponent_passes = 0"
+      ]
+    },
+    {
+      "seed": 1,
+      "moment_id": "goal-4269",
+      "claim_id": "goal-4269:p3",
+      "kind": "wrong_player",
+      "source_claim_id": "goal-4269:c2",
+      "source_rejected": false,
+      "text": "Rivermouth have repeatedly looked for Whitlow through a tight passing link (see the sequences involving Kofi Brennan and Elias Farrow) and have edged the recent attacking momentum with the home share at 42% despite a low team xG of 0.09.",
+      "caught": true,
+      "layer": "semantic",
+      "reasons": [
+        "The evidence contains no sequences involving Elias Farrow. The pass and event lists show links between Kofi Brennan, Gael Whitlow and Umar Whitlow, but not Elias Farrow, so the specific pairing cited is not supported."
+      ]
+    },
+    {
+      "seed": 1,
+      "moment_id": "card-4551",
+      "claim_id": "card-4551:p4",
+      "kind": "made_up_event",
+      "source_claim_id": null,
+      "source_rejected": null,
+      "text": "Bram Lindqvist hit the post at 67'.",
+      "caught": true,
+      "layer": "semantic",
+      "reasons": [
+        "The only event at 67' for Bram Lindqvist is a completed pass to Quinn Varga; there is no event showing a shot or a post at 67', so the claim is not supported."
+      ]
+    },
+    {
+      "seed": 2,
+      "moment_id": "card-1842",
+      "claim_id": "card-1842:p1",
+      "kind": "wrong_player",
+      "source_claim_id": "card-1842:c3",
+      "source_rejected": true,
+      "text": "The yellow came after a middle‑third possession sequence that produced Marek Yilmaz's low‑xG shot (0.02) immediately before Yusuf Ivers's foul and card.",
+      "caught": true,
+      "layer": "semantic",
+      "reasons": [
+        "This rewriten claim attributes the foul and card to Yusuf Ivers, but the event log shows the yellow was issued to Luca Haddad. The metrics and events do not support a card or foul by Yusuf Ivers, so the claim is incorrect."
+      ]
+    },
+    {
+      "seed": 2,
+      "moment_id": "card-2742",
+      "claim_id": "card-2742:p3",
+      "kind": "made_up_event",
+      "source_claim_id": null,
+      "source_rejected": null,
+      "text": "Nils Hollis hit the post at 43'.",
+      "caught": true,
+      "layer": "semantic",
+      "reasons": [
+        "No event shows Nils Hollis hitting the post at 43'. The only 43' RMU event is an incomplete pass by Nils Hollis."
+      ]
+    },
+    {
+      "seed": 2,
+      "moment_id": "card-2742",
+      "claim_id": "card-2742:p4",
+      "kind": "wrong_team",
+      "source_claim_id": "card-2742:c2",
+      "source_rejected": false,
+      "text": "The game was balanced through the first half: Northbridge had a 49% field tilt with 6 shots (xG 1.02) and 218 passes before the booking.",
+      "caught": true,
+      "layer": "semantic",
+      "reasons": [
+        "The cited metrics are for Rivermouth United (RMU). They show RMU had 49% field tilt, 6 shots (xG 1.024) and 218 passes; they do not support a claim that Northbridge had those values."
+      ]
+    },
+    {
+      "seed": 3,
+      "moment_id": "goal-2649",
+      "claim_id": "goal-2649:p1",
+      "kind": "made_up_event",
+      "source_claim_id": null,
+      "source_rejected": null,
+      "text": "Luca Ruiz hit the post at 41'.",
+      "caught": true,
+      "layer": "semantic",
+      "reasons": [
+        "The only cited event at 41' is a pass (Ruiz to Lindqvist in the defensive third). There is no event showing Ruiz took a shot or hit the post, so the claim is not supported."
+      ]
+    },
+    {
+      "seed": 3,
+      "moment_id": "goal-5394",
+      "claim_id": "goal-5394:p4",
+      "kind": "wrong_minute",
+      "source_claim_id": "goal-5394:c1",
+      "source_rejected": true,
+      "text": "Rivermouth sustained pressure in the final third, with a short sequence involving Sami Yilmaz and Yusuf Eriksen that fed Luca Lindqvist before Yusuf finished the move at 70'.",
+      "caught": true,
+      "layer": "deterministic",
+      "reasons": [
+        "minute 70' is not backed by the evidence"
+      ]
+    },
+    {
+      "seed": 3,
+      "moment_id": "goal-5394",
+      "claim_id": "goal-5394:p5",
+      "kind": "wrong_team",
+      "source_claim_id": "goal-5394:c1",
+      "source_rejected": true,
+      "text": "Northbridge sustained pressure in the final third, with a short sequence involving Sami Yilmaz and Yusuf Eriksen that fed Luca Lindqvist before Yusuf finished the move at 90'.",
+      "caught": true,
+      "layer": "semantic",
+      "reasons": [
+        "The cited events and player_impact metric refer to Rivermouth United and RMU-48 (Yusuf Eriksen). The claim credits Northbridge, which contradicts the evidence."
+      ]
+    },
+    {
+      "seed": 4,
+      "moment_id": "big_chance-1609",
+      "claim_id": "big_chance-1609:p2",
+      "kind": "wrong_minute",
+      "source_claim_id": "big_chance-1609:c1",
+      "source_rejected": false,
+      "text": "Elias Laine unleashed the big chance at 47' with a shot worth 0.93 xG that did not score, comprising almost all of Northbridge's xG so far (team 0.94).",
+      "caught": true,
+      "layer": "deterministic",
+      "reasons": [
+        "minute 47' is not backed by the evidence"
+      ]
+    },
+    {
+      "seed": 4,
+      "moment_id": "card-3579",
+      "claim_id": "card-3579:p1",
+      "kind": "wrong_number",
+      "source_claim_id": "card-3579:c2",
+      "source_rejected": false,
+      "text": "Up to 59' Castell had been heavily involved with 84 touches, 43 passes at 70% completion, 16 progressive passes, 11 final-third entries and 0.27 xG involvement, while Northbridge led the xG battle 1.28 to 0.53 and held 51% field tilt in a spell where their PPDA was 6.5.",
+      "caught": true,
+      "layer": "deterministic",
+      "reasons": [
+        "'84' does not match player_impact:NBR-79:0-3540 touches = 82"
+      ]
+    },
+    {
+      "seed": 5,
+      "moment_id": "card-1059",
+      "claim_id": "card-1059:p1",
+      "kind": "wrong_minute",
+      "source_claim_id": "card-1059:c1",
+      "source_rejected": false,
+      "text": "Umar Hollis was booked for a foul in the middle third at 38'.",
+      "caught": true,
+      "layer": "deterministic",
+      "reasons": [
+        "minute 38' is not backed by the evidence"
+      ]
+    },
+    {
+      "seed": 5,
+      "moment_id": "goal-2071",
+      "claim_id": "goal-2071:p2",
+      "kind": "wrong_number",
+      "source_claim_id": "goal-2071:c1",
+      "source_rejected": false,
+      "text": "Umar Ruiz finished the move with a low-probability strike (xG 0.01) to restore Northbridge to a 2-3 lead.",
+      "caught": true,
+      "layer": "deterministic",
+      "reasons": [
+        "'3' does not match match_stats:RMU:0-2072 goals = 1"
+      ]
+    },
+    {
+      "seed": 5,
+      "moment_id": "goal-4255",
+      "claim_id": "goal-4255:p3",
+      "kind": "wrong_player",
+      "source_claim_id": "goal-4255:c1",
+      "source_rejected": false,
+      "text": "Bram Hollis finished the sequence after Nils Hollis's interception and a series of final-third passes, scoring at 71' with a high-quality 0.95 xG strike.",
+      "caught": true,
+      "layer": "semantic",
+      "reasons": [
+        "The event log and player_impact clearly identify Umar Hollis as the shooter and goalscorer (#1240–#1241). Claiming Bram Hollis finished the sequence contradicts the events and names the wrong player."
+      ]
+    },
+    {
+      "seed": 6,
+      "moment_id": "goal-662",
+      "claim_id": "goal-662:p1",
+      "kind": "wrong_number",
+      "source_claim_id": "goal-662:c2",
+      "source_rejected": false,
+      "text": "The goal was the culmination of sustained Rivermouth pressure, they dominated final-third activity (field tilt 86%, 21 final-third passes to Northbridge’s 3) and were winning the middle-third battle with about 40% ball control and 54% numerical presence in midfield before the strike.",
+      "caught": true,
+      "layer": "deterministic",
+      "reasons": [
+        "'21' does not match field_tilt:RMU:0-660 team_passes = 19"
+      ]
+    },
+    {
+      "seed": 6,
+      "moment_id": "goal-1711",
+      "claim_id": "goal-1711:p2",
+      "kind": "wrong_player",
+      "source_claim_id": "goal-1711:c2",
+      "source_rejected": true,
+      "text": "Northbridge had already created 0.502 xG as a team and the attacking sequences that produced those chances began from Bram Dorsey’s interception and pass and, after Rivermouth briefly regained possession, Jonah Haddad’s turnover that found Dario Thorne.",
+      "caught": true,
+      "layer": "semantic",
+      "reasons": [
+        "The xG number is supported by the cited metric, but the play description is not. The chain cites Jonah Haddad’s turnover, yet the events show Ilyas Sallow (not Jonah Haddad) won the ball and passed to Dario Thorne. Also there is no event showing Bram Dorsey made a pass after his interception or that Rivermouth briefly regained possession. The named turnover and pass sequence are therefore not supported."
+      ]
+    },
+    {
+      "seed": 6,
+      "moment_id": "goal-3891",
+      "claim_id": "goal-3891:p3",
+      "kind": "made_up_event",
+      "source_claim_id": null,
+      "source_rejected": null,
+      "text": "Sami Thorne hit the post at 57'.",
+      "caught": true,
+      "layer": "semantic",
+      "reasons": [
+        "Event #965 at 57' is a completed pass by Sami Thorne; there is no event showing Sami Thorne hit the post at 57', so the claim is unsupported by the cited events."
+      ]
+    },
+    {
+      "seed": 7,
+      "moment_id": "goal-752",
+      "claim_id": "goal-752:p2",
+      "kind": "wrong_player",
+      "source_claim_id": "goal-752:c1",
+      "source_rejected": false,
+      "text": "Nils Oduya scored for Northbridge at 13' with a shot worth 0.26 xG.",
+      "caught": true,
+      "layer": "semantic",
+      "reasons": [
+        "Events #219 and #220 identify Bram Jansen as the shooter and goalscorer; there is no evidence Nils Oduya scored or took that 0.26 xG shot."
+      ]
+    },
+    {
+      "seed": 7,
+      "moment_id": "goal-993",
+      "claim_id": "goal-993:p3",
+      "kind": "made_up_event",
+      "source_claim_id": null,
+      "source_rejected": null,
+      "text": "Bram Jansen hit the post at 11'.",
+      "caught": true,
+      "layer": "semantic",
+      "reasons": [
+        "Event #153 at 11' is a completed pass from Bram Jansen to Bram Lindqvist; there is no event showing Jansen hitting the post at 11'."
+      ]
+    },
+    {
+      "seed": 7,
+      "moment_id": "big_chance-4481",
+      "claim_id": "big_chance-4481:p4",
+      "kind": "wrong_team",
+      "source_claim_id": "big_chance-4481:c2",
+      "source_rejected": true,
+      "text": "He has been the main attacking threat with 4 shots, xG 1.008 and 2 goals in 74.7 minutes, and Rivermouth overall have 8 shots and xG 1.049 to this point in the match.",
+      "caught": true,
+      "layer": "semantic",
+      "reasons": [
+        "The player and match metrics cited give Bram Jansen's numbers and Northbridge's team numbers, not Rivermouth's. The claim misattributes Northbridge's stats to Rivermouth, and it also uses the unsupported superlative \"main attacking threat.\""
+      ]
+    },
+    {
+      "seed": 8,
+      "moment_id": "goal-1395",
+      "claim_id": "goal-1395:p1",
+      "kind": "made_up_event",
+      "source_claim_id": null,
+      "source_rejected": null,
+      "text": "Elias Varga hit the post at 18'.",
+      "caught": true,
+      "layer": "semantic",
+      "reasons": [
+        "The cited event at 18' is a completed pass from Elias Varga; there is no event or metric showing a shot or that he hit the post."
+      ]
+    },
+    {
+      "seed": 8,
+      "moment_id": "goal-2903",
+      "claim_id": "goal-2903:p2",
+      "kind": "wrong_team",
+      "source_claim_id": "goal-2903:c1",
+      "source_rejected": true,
+      "text": "Gael Moreau had been Northbridge's primary finishing threat, registering 4 shots and 0.80 xG with 1 goal to his name and producing chances like his 47' shot (xG 0.51).",
+      "caught": true,
+      "layer": "semantic",
+      "reasons": [
+        "The cited metrics are for Gael Moreau (RMU), not Northbridge. In addition, labeling him Northbridge’s “primary” finishing threat is incorrect on team and unsupported as a superlative because no team-wide comparison is given."
+      ]
+    },
+    {
+      "seed": 8,
+      "moment_id": "card-4548",
+      "claim_id": "card-4548:p3",
+      "kind": "wrong_minute",
+      "source_claim_id": "card-4548:c1",
+      "source_rejected": false,
+      "text": "Tomas Okafor was booked for a foul in the middle third at 56'.",
+      "caught": true,
+      "layer": "deterministic",
+      "reasons": [
+        "minute 56' is not backed by the evidence"
+      ]
+    },
+    {
+      "seed": 9,
+      "moment_id": "big_chance-4189",
+      "claim_id": "big_chance-4189:p2",
+      "kind": "wrong_minute",
+      "source_claim_id": "big_chance-4189:c2",
+      "source_rejected": false,
+      "text": "Rivermouth were on top from 80' to 70' (away threat 0.751 vs home share 0.307) and their centre-focused attack (centre share 0.5 with 8 entries) produced the short Quill-to-Varga progression that finished with the shot.",
+      "caught": true,
+      "layer": "deterministic",
+      "reasons": [
+        "minute 80' is not backed by the evidence"
+      ]
+    },
+    {
+      "seed": 9,
+      "moment_id": "card-120",
+      "claim_id": "card-120:p1",
+      "kind": "wrong_team",
+      "source_claim_id": "card-120:c1",
+      "source_rejected": false,
+      "text": "Jonah Sallow was booked for a foul in the middle third at 3', stopping his early involvement for Northbridge.",
+      "caught": true,
+      "layer": "semantic",
+      "reasons": [
+        "Events #48 and #49 show Jonah Sallow was booked for Rivermouth United (RMU), not Northbridge. The team named in the claim does not match the evidence."
+      ]
+    },
+    {
+      "seed": 9,
+      "moment_id": "card-4683",
+      "claim_id": "card-4683:p3",
+      "kind": "wrong_number",
+      "source_claim_id": "card-4683:c2",
+      "source_rejected": false,
+      "text": "Up to 78' Novak had played 78 minutes with 34 touches, 19 passes at 74% completion, 10 progressive passes and 13 pressures.",
+      "caught": true,
+      "layer": "deterministic",
+      "reasons": [
+        "'13' does not match player_impact:RMU-7:0-4680 pressures = 11"
+      ]
+    },
+    {
+      "seed": 10,
+      "moment_id": "card-454",
+      "claim_id": "card-454:p1",
+      "kind": "wrong_minute",
+      "source_claim_id": "card-454:c1",
+      "source_rejected": false,
+      "text": "By 28' Northbridge have taken 3 shots (1 inside the box) and sit on team xG 0.924 while Rivermouth have 0 shots and xG 0.",
+      "caught": true,
+      "layer": "deterministic",
+      "reasons": [
+        "minute 28' is not backed by the evidence"
+      ]
+    },
+    {
+      "seed": 10,
+      "moment_id": "goal-5397",
+      "claim_id": "goal-5397:p3",
+      "kind": "wrong_player",
+      "source_claim_id": "goal-5397:c3",
+      "source_rejected": false,
+      "text": "Teo Thorne had been the focal point all match with 6 shots and 120 touches, and that involvement crystallised into a high-quality opportunity at 90' as the xG jump of 0.773 produced his 0.77 xG shot which was converted.",
+      "caught": true,
+      "layer": "semantic",
+      "reasons": [
+        "The cited metrics refer to RMU-99 (Wes Whitlow), not Teo Thorne. There is no evidence provided that Teo Thorne had those counts or the same involvement, so the claim is not supported."
+      ]
+    },
+    {
+      "seed": 10,
+      "moment_id": "goal-5397",
+      "claim_id": "goal-5397:p4",
+      "kind": "wrong_number",
+      "source_claim_id": "goal-5397:c3",
+      "source_rejected": false,
+      "text": "Wes Whitlow had been the focal point all match with 6 shots and 122 touches, and that involvement crystallised into a high-quality opportunity at 90' as the xG jump of 0.773 produced his 0.77 xG shot which was converted.",
+      "caught": true,
+      "layer": "deterministic",
+      "reasons": [
+        "'122' does not match player_impact:RMU-99:0-5340 touches = 120"
+      ]
+    },
+    {
+      "seed": 11,
+      "moment_id": "goal-1327",
+      "claim_id": "goal-1327:p1",
+      "kind": "wrong_number",
+      "source_claim_id": "goal-1327:c2",
+      "source_rejected": true,
+      "text": "Bekker has been the focal threat so far with 5 shots, 0.318 xG, 28 touches and 10 pressures before his goal.",
+      "caught": true,
+      "layer": "deterministic",
+      "reasons": [
+        "'5' does not match player_impact:NBR-45:0-1328 shots = 3"
+      ]
+    },
+    {
+      "seed": 11,
+      "moment_id": "goal-4603",
+      "claim_id": "goal-4603:p2",
+      "kind": "wrong_player",
+      "source_claim_id": "goal-4603:c2",
+      "source_rejected": false,
+      "text": "The goal was the end product of a constructed sequence through the middle and final third, with completions from Teo Farrow, Kian Lindqvist, Kofi Zoric and Quinn Bekker linking into Omar Bekker and a pass network that registered four key edges in that period.",
+      "caught": true,
+      "layer": "semantic",
+      "reasons": [
+        "The event sequence does not include Teo Farrow; the listed completions (Teo Farrow, Kian Lindqvist, Kofi Zoric, Quinn Bekker) do not match the recorded passes, so the claim names a player not present in the cited evidence."
+      ]
+    },
+    {
+      "seed": 12,
+      "moment_id": "goal-581",
+      "claim_id": "goal-581:p1",
+      "kind": "wrong_player",
+      "source_claim_id": "goal-581:c1",
+      "source_rejected": false,
+      "text": "Marek Farrow opened the scoring at 10' with a high-quality finish from the final third after a short buildup involving Tomas Abara and Bram Whitlow.",
+      "caught": true,
+      "layer": "semantic",
+      "reasons": [
+        "The events list does not show Tomas Abara involved in the buildup; the passing sequence features Nils Whitlow and Bram Whitlow, not Tomas Abara, so the claim that Tomas Abara was involved is not supported."
+      ]
+    },
+    {
+      "seed": 12,
+      "moment_id": "goal-2209",
+      "claim_id": "goal-2209:p2",
+      "kind": "made_up_event",
+      "source_claim_id": null,
+      "source_rejected": null,
+      "text": "Teo Bekker hit the post at 29'.",
+      "caught": true,
+      "layer": "semantic",
+      "reasons": [
+        "Event #466 at 29' records only a completed pass from Teo Bekker to Hugo Marsh in the final third. There is no shot or post hit recorded at that minute, so the evidence does not support the claim."
+      ]
+    },
+    {
+      "seed": 13,
+      "moment_id": "goal-1142",
+      "claim_id": "goal-1142:p1",
+      "kind": "made_up_event",
+      "source_claim_id": null,
+      "source_rejected": null,
+      "text": "Viktor Yilmaz hit the post at 18'.",
+      "caught": true,
+      "layer": "semantic",
+      "reasons": [
+        "No event records a Viktor Yilmaz shot or a post at 18'. Event #255 is an incomplete pass by Viktor Yilmaz at 18', so the evidence does not support a ‘hit the post’ claim."
+      ]
+    },
+    {
+      "seed": 14,
+      "moment_id": "card-1123",
+      "claim_id": "card-1123:p1",
+      "kind": "wrong_team",
+      "source_claim_id": "card-1123:c1",
+      "source_rejected": false,
+      "text": "At 19' Quinn Castell was booked for a final-third foul after a sustained Rivermouth sequence (Jansen to Castell, Castell back to Jansen, an incomplete Jansen pass, then the foul); Castell had 13 touches, 9 passes (67% completion), 1 progressive pass, 1 ball win and 2 pressures with a player impact xGI of 0.00 for the period to 18'.",
+      "caught": true,
+      "layer": "semantic",
+      "reasons": [
+        "The event sequence cited (passes 277, 278, 282 then foul 283) is a Northbridge sequence, not a Rivermouth one, so describing it as a Rivermouth sequence is incorrect; the player metrics themselves are accurate but the ownership of the sequence is wrong."
+      ]
+    },
+    {
+      "seed": 14,
+      "moment_id": "card-4434",
+      "claim_id": "card-4434:p2",
+      "kind": "wrong_minute",
+      "source_claim_id": "card-4434:c2",
+      "source_rejected": true,
+      "text": "Northbridge had been the attacking side in the ten minutes before the card with a home attacking threat share of 73% while trailing 1-3, registering 12 shots (xG 1.23) to Rivermouth's 11 shots (xG 2.24) and seeing Mateo Jansen’s low-xG shot at 53'.",
+      "caught": true,
+      "layer": "deterministic",
+      "reasons": [
+        "minute 53' is not backed by the evidence"
+      ]
+    },
+    {
+      "seed": 15,
+      "moment_id": "card-343",
+      "claim_id": "card-343:p1",
+      "kind": "wrong_minute",
+      "source_claim_id": "card-343:c1",
+      "source_rejected": true,
+      "text": "At 26' Teo Moreau was booked for a foul in the final third.",
+      "caught": true,
+      "layer": "deterministic",
+      "reasons": [
+        "minute 26' is not backed by the evidence"
+      ]
+    },
+    {
+      "seed": 15,
+      "moment_id": "goal-3647",
+      "claim_id": "goal-3647:p2",
+      "kind": "wrong_number",
+      "source_claim_id": "goal-3647:c1",
+      "source_rejected": false,
+      "text": "Dario Ivers scored at 60' (xG 1.08) and again at 61' (xG 0.04).",
+      "caught": true,
+      "layer": "deterministic",
+      "reasons": [
+        "'1.08' does not match event:1063 xg = 0.718"
+      ]
+    },
+    {
+      "seed": 16,
+      "moment_id": "big_chance-2638",
+      "claim_id": "big_chance-2638:p1",
+      "kind": "wrong_number",
+      "source_claim_id": "big_chance-2638:c3",
+      "source_rejected": true,
+      "text": "Northbridge were not pressing, their PPDA sat at 51.0, while Rivermouth’s overall field tilt was under half at 47% and they showed a measurable middle-centre overload of 30%, explaining how the short central sequence produced Galvan’s chance.",
+      "caught": true,
+      "layer": "deterministic",
+      "reasons": [
+        "'30%' does not match zone_overloads:RMU:1800-2639 value = 0.154"
+      ]
+    },
+    {
+      "seed": 16,
+      "moment_id": "goal-4525",
+      "claim_id": "goal-4525:p2",
+      "kind": "wrong_player",
+      "source_claim_id": "goal-4525:c1",
+      "source_rejected": false,
+      "text": "Mateo Bekker’s low-probability finish (xG 0.03) put Rivermouth 1-0 at 76' after a final-third attempt that squeezed home.",
+      "caught": true,
+      "layer": "semantic",
+      "reasons": [
+        "The scorer in the cited events is Viktor Farrow (#1259–#1260). There is no evidence Mateo Bekker was involved or scored, so the claim is incorrect."
+      ]
+    },
+    {
+      "seed": 17,
+      "moment_id": "card-2731",
+      "claim_id": "card-2731:p3",
+      "kind": "wrong_player",
+      "source_claim_id": "card-2731:c1",
+      "source_rejected": true,
+      "text": "Kofi Pereira was booked after a foul in the middle third that stopped a left-midfield sequence which had started with Brennan to Rasmus and progressed into the final third via Mateo Marsh, with the card shown straight after the foul.",
+      "caught": true,
+      "layer": "semantic",
+      "reasons": [
+        "The card event (#727) records Sami Rasmus being booked, not Kofi Pereira. The rest of the sequence timing is partly supported, but the named player who was booked is incorrect."
+      ]
+    },
+    {
+      "seed": 17,
+      "moment_id": "goal-4282",
+      "claim_id": "goal-4282:p4",
+      "kind": "made_up_event",
+      "source_claim_id": null,
+      "source_rejected": null,
+      "text": "Dario Kovac hit the post at 64'.",
+      "caught": true,
+      "layer": "semantic",
+      "reasons": [
+        "No event or metric shows Dario Kovac hitting the post at 64'. The only 64' event cited is a completed pass from Dario Kovac to Mateo Marsh, so the claim is not supported."
+      ]
+    },
+    {
+      "seed": 18,
+      "moment_id": "goal-2074",
+      "claim_id": "goal-2074:p1",
+      "kind": "made_up_event",
+      "source_claim_id": null,
+      "source_rejected": null,
+      "text": "Teo Varga hit the post at 29'.",
+      "caught": true,
+      "layer": "semantic",
+      "reasons": [
+        "Event #506 at 29' records a completed pass from Teo Varga to Umar Sallow in the final third. There is no shot, post, or goal recorded at 29', so the evidence does not support ‘hit the post’."
+      ]
+    },
+    {
+      "seed": 19,
+      "moment_id": "card-2437",
+      "claim_id": "card-2437:p2",
+      "kind": "wrong_team",
+      "source_claim_id": "card-2437:c1",
+      "source_rejected": false,
+      "text": "Teo Dorsey was booked for a middle-third foul at 41' after being central to Rivermouth’s build-up, featuring multiple completed passes before the infringement.",
+      "caught": true,
+      "layer": "semantic",
+      "reasons": [
+        "The cited metrics and events all relate to Northbridge (pass_network:NBR and NBR pass events 645–664). There is no evidence of Teo Dorsey being central to Rivermouth’s build-up, so the claim about Rivermouth is not supported."
+      ]
+    },
+    {
+      "seed": 19,
+      "moment_id": "goal-4429",
+      "claim_id": "goal-4429:p3",
+      "kind": "wrong_minute",
+      "source_claim_id": "goal-4429:c1",
+      "source_rejected": false,
+      "text": "Hugo Brennan finished a quick final-third combination to score for Rivermouth United with a high-probability 0.92 xG strike at 54'.",
+      "caught": true,
+      "layer": "deterministic",
+      "reasons": [
+        "minute 54' is not backed by the evidence"
+      ]
+    },
+    {
+      "seed": 20,
+      "moment_id": "card-1144",
+      "claim_id": "card-1144:p1",
+      "kind": "wrong_minute",
+      "source_claim_id": "card-1144:c1",
+      "source_rejected": false,
+      "text": "Elias Jansen was booked for a final-third foul at 40' after the foul, having already scored and registered 0.47 xG from his one shot.",
+      "caught": true,
+      "layer": "deterministic",
+      "reasons": [
+        "minute 40' is not backed by the evidence"
+      ]
+    },
+    {
+      "seed": 20,
+      "moment_id": "goal-3162",
+      "claim_id": "goal-3162:p2",
+      "kind": "wrong_number",
+      "source_claim_id": "goal-3162:c3",
+      "source_rejected": true,
+      "text": "Northbridge's low pressing (PPDA 14.2) and Rivermouth's middle-centre overload (present for 8.8% of seconds between 46' and 52') let RMU string central combinations while registering almost no final-third pass share against them, a pattern that set up the goal.",
+      "caught": true,
+      "layer": "deterministic",
+      "reasons": [
+        "'14.2' does not match ppda:NBR:2700-3120 value = 9.500"
+      ]
+    }
+  ],
+  "plants_planned": 50,
+  "unplaced": [
+    "wrong_team",
+    "wrong_team",
+    "wrong_team"
+  ],
+  "numbers": {
+    "checked": 336,
+    "matching": 336
+  },
+  "latency_s": {
+    "mean": 51.3,
+    "p50": 49.7,
+    "p90": 61.3,
+    "max": 118.0
+  },
+  "tokens": {
+    "calls": 1304,
+    "input": 4012077,
+    "output": 866800,
+    "reasoning": 484480
+  },
+  "showcase": {
+    "published": 66,
+    "would_fail": 17,
+    "failing": [
+      [
+        "card-25:c2",
+        [
+          "unsupported number '4'"
+        ]
+      ],
+      [
+        "check_in-600:c1",
+        [
+          "unsupported duration '10 minutes'",
+          "unsupported number '3'"
+        ]
+      ],
+      [
+        "momentum_swing-2820:c3",
+        [
+          "unsupported duration '10 minutes'"
+        ]
+      ],
+      [
+        "formation_change-3600:c2",
+        [
+          "unsupported number '7'",
+          "unsupported number '5'"
+        ]
+      ],
+      [
+        "formation_change-3600:c3",
+        [
+          "unsupported number '1'"
+        ]
+      ],
+      [
+        "card-4270:c2",
+        [
+          "unsupported number '1'"
+        ]
+      ],
+      [
+        "momentum_swing-4380:c2",
+        [
+          "unsupported number '2'"
+        ]
+      ],
+      [
+        "spotlight-RMU-33:c2",
+        [
+          "meta text 'cited' in the text"
+        ]
+      ],
+      [
+        "spotlight-NBR-10:c1",
+        [
+          "meta text 'event 84' in the text"
+        ]
+      ],
+      [
+        "team_recap-NBR:c3",
+        [
+          "unsupported number '5'",
+          "unsupported number '2'"
+        ]
+      ],
+      [
+        "team_recap-NBR:c1",
+        [
+          "unsupported number '3'"
+        ]
+      ],
+      [
+        "team_recap-RMU:c1",
+        [
+          "unsupported number '9'"
+        ]
+      ],
+      [
+        "team_recap-RMU:c2",
+        [
+          "unsupported number '5'",
+          "unsupported number '10'"
+        ]
+      ],
+      [
+        "team_recap-RMU:c5",
+        [
+          "unsupported number '2'"
+        ]
+      ],
+      [
+        "full_time-5400:c3",
+        [
+          "unsupported number '1'",
+          "unsupported number '2'",
+          "unsupported number '2'"
+        ]
+      ],
+      [
+        "full_time-5400:c2",
+        [
+          "unsupported number '5'"
+        ]
+      ],
+      [
+        "full_time-5400:c5",
+        [
+          "unsupported duration '10 minutes'"
+        ]
+      ]
+    ]
+  }
+}
