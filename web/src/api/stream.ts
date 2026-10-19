@@ -3,7 +3,8 @@
 
 import { STREAM_KINDS, type StreamMessage } from "./types";
 
-export function openStream(url: string, onMessage: (m: StreamMessage) => void, onDrop?: () => void): () => void {
+export function openStream(url: string, onMessage: (m: StreamMessage) => void, onDrop?: () => void,
+  onGone?: () => void): () => void {
   const source = new EventSource(url);
   for (const kind of STREAM_KINDS) {
     source.addEventListener(kind, (e) => {
@@ -12,8 +13,9 @@ export function openStream(url: string, onMessage: (m: StreamMessage) => void, o
       if (kind === "end") source.close();    // otherwise the browser would reconnect after full time
     });
   }
-  source.onerror = () => {
-    if (source.readyState !== EventSource.CLOSED) onDrop?.();
+  source.onerror = () => {           // CLOSED means the browser has stopped retrying, e.g. a 404 after a restart
+    if (source.readyState === EventSource.CLOSED) onGone?.();
+    else onDrop?.();
   };
   return () => source.close();
 }

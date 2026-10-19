@@ -106,3 +106,9 @@ export function replaySkip(info: MatchInfo, clock: number, seen: number): { from
   const next = nextMomentTime(info, Math.max(clock, seen));
   return next === null ? null : { fromT: Math.max(0, next - SKIP_LEAD_S), seen: next };
 }
+
+/** Live: a combo the viewer asked for that hasn't reached this item yet. Once the match has ended it never will. */
+export function comboWaiting(requested: Set<string>, item: FeedItem, persona: Persona, language: Language,
+  ended: boolean): boolean {
+  return !ended && requested.has(`${persona}|${language}`) && item.claims.length > 0 && !hasCombo(item, persona, language);
+}

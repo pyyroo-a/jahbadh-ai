@@ -262,3 +262,72 @@ def test_every_live_cue_says_it_was_not_precomputed():
     asyncio.run(drain(run))
     cues = [i.data for i in run.history if i.kind == "cue"]
     assert cues and {c.source for c in cues} >= {"event", "metric"} and not any(c.precomputed for c in cues)
+
+
+def test_nothing_new_starts_while_a_run_is_cancelling(monkeypatch):
+    release = asyncio.Event()
+    real = pipeline.analyse
+
+    async def held(r):
+        await release.wait()
+        return await real(r)
+
+    monkeypatch.setattr(pipeline, "analyse", held)
+    run = run_with(sleep=lambda s: asyncio.sleep(0))
+
+    async def main():
+        run.start()
+        while kinds(run).count("thinking") < 1:
+            await asyncio.sleep(0)
+        stopping = asyncio.create_task(run.cancel())
+        await asyncio.sleep(0)                 # cancel() is now waiting for the moments to stop
+        assert run.finished and not run.done
+        with pytest.raises(RuntimeError):
+            await run.spotlight("RMU-33")
+        assert run.add_combo("casual", "en") is False
+        await stopping
+        release.set()
+        await asyncio.sleep(0.1)
+
+    asyncio.run(asyncio.wait_for(main(), timeout=30))
+    assert run.history[-1].data.reason == "cancelled"
+    assert not any(i.kind == "thinking" and i.data.kind == "spotlight" for i in run.history)
+
+
+def test_two_spotlights_on_one_player_in_the_same_second_both_run():
+    run = run_with()
+    at = run.skip()
+
+    async def ask_twice(r: LiveRun) -> None:
+        first, second = await r.spotlight("RMU-33"), await r.spotlight("RMU-33")
+        assert first.id == f"spotlight-RMU-33-{int(at)}" and second.id != first.id
+
+    asyncio.run(drain(run, before=ask_twice))
+    feeds = [i.data.moment.id for i in run.history if i.kind == "feed" and i.data.moment.kind == "spotlight"]
+    assert len(feeds) == 2 and len(set(feeds)) == 2
+
+
+def test_combos_with_one_persona_share_its_english(monkeypatch):
+    from jahbadh.agents.contracts import RenderedClaim
+    from jahbadh.api import live
+    _one_claim(monkeypatch)
+    calls: list[tuple[str, str, bool]] = []
+
+    async def fake_render(desk, item, persona, language):
+        has_english = any(r.persona == persona and r.language == "en" for r in item.renders)
+        calls.append((item.moment.id, language, has_english))
+        await asyncio.sleep(0)
+        if language == "en":
+            return [RenderedClaim(claim_id=c.id, persona=persona, language="en", text=f"{persona} take {len(calls)}")
+                    for c in item.claims], []
+        return [RenderedClaim(claim_id=c.id, persona=persona, language=language, text="ترجمة") for c in item.claims], []
+
+    monkeypatch.setattr(live, "render_combo", fake_render)
+    run = run_with()
+    run.add_combo("casual", "en")
+    run.add_combo("casual", "ar")
+    asyncio.run(drain(run))
+    english = [c for c in calls if c[1] == "en"]
+    assert len(english) == 16 and len({m for m, _, _ in english}) == 16       # once per moment, never twice
+    arabic = [c for c in calls if c[1] == "ar"]
+    assert len(arabic) == 16 and all(has for _, _, has in arabic)            # each starts from the shared English

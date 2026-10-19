@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type {
   EventLine, FeedItem, MatchInfo, Moment, Rejection, RenderedClaim, StreamMessage, Team,
 } from "../api/types";
-import { claimText, hasCombo, initialDesk, nextMomentTime, reduce, rejectionsFor, replaySkip } from "./desk";
+import { claimText, comboWaiting, hasCombo, initialDesk, nextMomentTime, reduce, rejectionsFor, replaySkip } from "./desk";
 
 const team = (id: string, name: string): Team => ({
   id, name, formation: "4-3-3", players: [],
@@ -155,5 +155,16 @@ describe("replaySkip", () => {
     expect(replaySkip(at, 300, 295)).toEqual({ fromT: 880, seen: 885 });
     expect(replaySkip(at, 880, 885)).toBeNull();
     expect(replaySkip({ ...info, moment_times: [3] }, 0, 0)).toEqual({ fromT: 0, seen: 3 });
+  });
+});
+
+describe("comboWaiting", () => {
+  it("waits for a requested combo only while the match is still going", () => {
+    const one = item("goal-885", 885, { renders: [] });
+    const asked = new Set(["casual|ar"]);
+    expect(comboWaiting(asked, one, "casual", "ar", false)).toBe(true);
+    expect(comboWaiting(asked, one, "casual", "ar", true)).toBe(false);       // ended: it isn't coming any more
+    expect(comboWaiting(new Set(), one, "casual", "ar", false)).toBe(false);
+    expect(comboWaiting(asked, item("goal-885", 885, { renders: [r("casual", "ar", "نص")] }), "casual", "ar", false)).toBe(false);
   });
 });

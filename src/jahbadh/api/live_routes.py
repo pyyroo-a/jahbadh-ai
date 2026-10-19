@@ -133,7 +133,7 @@ async def live_skip(request: Request, run_id: str) -> dict:
 @router.post("/{run_id}/spotlight")
 async def live_spotlight(request: Request, run_id: str, body: SpotlightRequest) -> dict:
     run = _run(request, run_id)
-    if run.done:
+    if run.finished:
         raise HTTPException(409, FINISHED)
     players = {p.id for team in (run.match.meta.home, run.match.meta.away) for p in team.players}
     if body.player_id not in players:
@@ -147,6 +147,6 @@ async def live_spotlight(request: Request, run_id: str, body: SpotlightRequest) 
 @router.post("/{run_id}/combo")
 async def live_combo(request: Request, run_id: str, body: ComboRequest) -> dict:
     run = _run(request, run_id)
-    if run.done:                                      # the history is closed, so renders would be wasted calls
+    if run.finished:                                  # the history is closed, so renders would be wasted calls
         return {"accepted": False}
     return {"accepted": run.add_combo(body.persona, body.language)}

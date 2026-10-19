@@ -13,7 +13,7 @@ import OverlayPreview, { LowerThirds } from "./components/OverlayPreview";
 import RecapPanel from "./components/RecapPanel";
 import TacticalView from "./components/TacticalView";
 import TopBar from "./components/TopBar";
-import { hasCombo, initialDesk, reduce, replaySkip } from "./state/desk";
+import { comboWaiting, initialDesk, reduce, replaySkip } from "./state/desk";
 import type { Selection } from "./state/evidence";
 import { highlights } from "./state/highlights";
 import { activeCues, tickingClock } from "./state/overlay";
@@ -52,7 +52,10 @@ export default function App() {
     if (!source) return;
     const url = source.kind === "replay" ? replayUrl(source.matchId, source.speed, source.fromT) : liveUrl(source.runId);
     return openStream(url, (m) => { setProblem(null); setHeardAt(performance.now()); dispatch(m); },
-      () => setProblem("Reconnecting to the desk..."));
+      () => setProblem("Reconnecting to the desk..."),
+      () => setProblem(source.kind === "live"
+        ? "This live match is no longer running. Back to the replay is one click away."
+        : "The replay stream has stopped. Reload the page to start it again."));
   }, [source]);
 
   const liveRunId = source?.kind === "live" ? source.runId : null;
@@ -88,8 +91,7 @@ export default function App() {
       else setNotice("This live match already has its two extra versions.");
     }).catch(() => setNotice("This live match already has its two extra versions."));
   }
-  const waiting = (item: FeedItem) =>
-    requested.has(`${persona}|${language}`) && item.claims.length > 0 && !hasCombo(item, persona, language);
+  const waiting = (item: FeedItem) => comboWaiting(requested, item, persona, language, desk.ended !== null);
 
   const say = (e: unknown) => setLiveNotice(e instanceof ApiError ? e.detail : "The desk couldn't take that request.");
   const controls = {

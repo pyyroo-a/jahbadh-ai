@@ -59,6 +59,8 @@ class LiveRun:
             model=str(model), created=datetime.now(UTC).isoformat(), moment_times=[]))]
         self._started: set[str] = set()              # moments that have begun, key or requested
         self._tasks: set[asyncio.Task] = set()        # moments and combo renders still working
+        self._english: dict[tuple[str, str], asyncio.Task] = {}   # (moment, persona): its English, rendered once
+        self._closing = False                         # cancel() has begun: nothing new may start
         self._gate: asyncio.Semaphore | None = None
         self._changed: asyncio.Event | None = None    # set on every append, wakes the viewers
         self._wake: asyncio.Event | None = None       # set by skip, cuts the pacing sleep short
@@ -167,7 +169,15 @@ class LiveRun:
 
     # -- the desk -------------------------------------------------------------------------------------------
 
+    @property
+    def finished(self) -> bool:
+        """Over, or on its way out: no spotlight, combo or moment may start (and spend) any more."""
+        return self.done or self._closing
+
     def _spawn(self, work) -> None:
+        if self.finished:
+            work.close()
+            return
         task = asyncio.create_task(work)
         self._tasks.add(task)
         task.add_done_callback(self._tasks.discard)
@@ -191,10 +201,24 @@ class LiveRun:
         for persona, language in self.combos:
             self._spawn(self._render(item, persona, language))
 
+    def _persona_english(self, item: FeedItem, persona: Persona) -> asyncio.Task:
+        """The persona's English for one moment, rendered once and shared by every language of that persona."""
+        key = (item.moment.id, persona)
+        if key not in self._english:
+            task = asyncio.create_task(render_combo(self.desk, item, persona, "en"))
+            self._tasks.add(task)
+            task.add_done_callback(self._tasks.discard)
+            self._english[key] = task
+        return self._english[key]
+
     async def _render(self, item: FeedItem, persona: Persona, language: Language) -> None:
         async with self._gate:
             try:
-                renders, rejections = await render_combo(self.desk, item, persona, language)
+                renders, rejections = await asyncio.shield(self._persona_english(item, persona))
+                if language != "en":       # translate the shared English, so every version says the same thing
+                    with_english = item.model_copy(update={"renders": item.renders + renders})
+                    more, rejected = await render_combo(self.desk, with_english, persona, language)
+                    renders, rejections = renders + more, rejections + rejected
             except Exception:  # the viewer keeps the English fallback
                 log.exception("combo %s/%s for %s failed", persona, language, item.moment.id)
                 return
@@ -203,14 +227,22 @@ class LiveRun:
 
     async def spotlight(self, player_id: str) -> Moment:
         """A viewer's spotlight on one player, as of now. KeyError for a player who isn't in this match."""
+        if self.finished:
+            raise RuntimeError("this live match has finished")
         base = spotlight_moment(self.match, player_id, "requested by a viewer", t=self.clock)
-        moment = base.model_copy(update={"id": f"spotlight-{player_id}-{int(self.clock)}"})
+        moment_id, n = f"spotlight-{player_id}-{int(self.clock)}", 1
+        while moment_id in self._started:             # two asks in one match second are two spotlights
+            n += 1
+            moment_id = f"spotlight-{player_id}-{int(self.clock)}-{n}"
+        moment = base.model_copy(update={"id": moment_id})
         self._events()
         self._begin(moment, at=self.clock)
         return moment
 
     def add_combo(self, persona: Persona, language: Language) -> bool:
         combo = (persona, language)
+        if self.finished:
+            return False
         if combo == DEFAULT_COMBO or combo in self.combos:
             return True
         if len(self.combos) >= LIVE_MAX_COMBOS:
@@ -224,8 +256,9 @@ class LiveRun:
 
     async def cancel(self) -> None:
         """Stop the clock and the desk: pending moments are dropped and no more model calls go out."""
-        if self.done:
+        if self.finished:
             return
+        self._closing = True
         current = asyncio.current_task()
         pending = [t for t in self._tasks if t is not current]
         if self._runner is not None and self._runner is not current:
