@@ -1,0 +1,14 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "environmentName": { "value": "${AZURE_ENV_NAME}" },
+    "location": { "value": "${AZURE_LOCATION}" },
+    "translatorName": { "value": "${TRANSLATOR_NAME}" },
+    "minReplicas": { "value": "${MIN_REPLICAS=0}" },
+    "ingestToken": { "value": "${JAHBADH_INGEST_TOKEN}" },
+    "foundryKey": { "value": "${FOUNDRY_KEY=}" },
+    "translatorKey": { "value": "${TRANSLATOR_KEY=}" },
+    "apiExists": { "value": "${SERVICE_API_RESOURCE_EXISTS=false}" }
+  }
+}

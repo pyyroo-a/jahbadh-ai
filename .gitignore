@@ -5,6 +5,8 @@
 .env
 .env.*
 !.env.example
+# azd environments (they hold the ingest token)
+.azure/
 
 # Python
 __pycache__/

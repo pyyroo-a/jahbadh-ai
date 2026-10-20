@@ -39,6 +39,8 @@ Jahbadh is my entry for the Microsoft x Premier League *Inside the Game* develop
 
 ## Try it
 
+To put it on Azure (Container Apps, keyless sign-in, traces in Foundry), follow the step-by-step [deploy guide](docs/deploy.md).
+
 You need Python 3.13.
 
 ```bash

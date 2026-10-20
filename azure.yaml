@@ -1,0 +1,14 @@
+# The Azure Developer CLI reads this. azd provision makes the Azure resources from infra/, and azd deploy
+# builds the image in the cloud (no Docker needed on your machine) and ships it to the container app.
+name: jahbadh
+services:
+  api:
+    project: .
+    language: python
+    host: containerapp
+    docker:
+      path: ./Dockerfile
+      remoteBuild: true
+infra:
+  provider: bicep
+  path: infra

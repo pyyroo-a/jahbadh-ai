@@ -5,6 +5,7 @@ data/state
 data/eval/pilot
 .superpowers
 .env
+.azure
 .git
 tests
 web/dist
