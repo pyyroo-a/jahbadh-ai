@@ -218,3 +218,17 @@ def test_live_follow_is_clamped_to_the_clock(tmp_path, monkeypatch):
         assert c.get(f"/api/live/{rid}/follow/XYZ-1?t=100").status_code == 404
         assert c.get(f"/api/live/{rid}/follow/RMU-33?t=5401").status_code == 422
         assert c.get("/api/live/live-1-nope/follow/RMU-33?t=100").status_code == 404
+
+
+def test_live_players_never_run_past_the_clock(tmp_path, monkeypatch):
+    from jahbadh.api.personal import player_table
+    _demo_seed(monkeypatch)
+    app = live_app(tmp_path)
+    app.state.sleep = _holding_at(app, 600)
+    with TestClient(app) as c:
+        rid = c.post("/api/live").json()["run_id"]
+        clock = _wait_for_clock(c, 600)
+        got = c.get(f"/api/live/{rid}/players?t=5400").json()
+        assert got == [r.model_dump(mode="json") for r in player_table(c.app.state.live.match, clock)]
+        assert c.get(f"/api/live/{rid}/players?t=5401").status_code == 422
+        assert c.get("/api/live/live-1-nope/players?t=100").status_code == 404

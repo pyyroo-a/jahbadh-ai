@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 from jahbadh import analytics as an
 from jahbadh.analytics.base import MATCH_END, metric_id
-from jahbadh.schemas import Match, Metric
+from jahbadh.schemas import EventType, Match, Metric
 
 
 class PlayerFollow(BaseModel):
@@ -68,3 +68,52 @@ def player_follow(match: Match, player_id: str, t: float) -> PlayerFollow:
     events = [e.id for e in match.events if e.t < t and player_id in (e.player_id, e.related_player_id)]
     return PlayerFollow(player_id=player_id, t=t, on_pitch=_on_pitch(match, player_id, t), impact=metrics[0],
                         heatmap=metrics[1], physical=metrics[2], passing=metrics[3], event_ids=sorted(events))
+
+
+class PlayerRow(BaseModel):
+    """One line of Player watch: what a player has done up to t. Pass speeds are synthetic (the simulator's)."""
+    player_id: str
+    name: str
+    team_id: str
+    shirt: int
+    role: str
+    on_pitch: bool
+    minutes: float
+    xgi: float
+    xg: float
+    goals: int
+    assists: int
+    shots: int
+    ball_wins: int
+    yellow_cards: int
+    red_cards: int
+    pass_speed_avg: float | None
+    pass_speed_max: float | None
+
+
+def player_table(match: Match, t: float) -> list[PlayerRow]:
+    """Every player who has been on the pitch by t (starters, and subs once they've come on), most expected goal
+    involvement first. Nothing after t counts, so live mode can't peek ahead."""
+    if not 0 <= t <= MATCH_END:
+        raise ValueError(f"time {t} must be between 0 and {MATCH_END:g}")
+    came_on = {e.related_player_id for e in match.events if e.type == EventType.SUBSTITUTION and e.t < t}
+    rows = []
+    for team in (match.meta.home, match.meta.away):
+        for p in team.players:
+            if not (p.starter or p.id in came_on):
+                continue
+            data = an.player_impact(match, p.id, 0, t).data if t > 0 else {}
+            cards = [e for e in match.events if e.type == EventType.CARD and e.player_id == p.id and e.t < t]
+            reds = sum(e.detail.get("colour") == "red" for e in cards)
+            speeds = [float(e.detail["speed_kmh"]) for e in match.events
+                      if e.type == EventType.PASS and e.player_id == p.id and e.t < t and "speed_kmh" in e.detail]
+            rows.append(PlayerRow(
+                player_id=p.id, name=p.name, team_id=team.id, shirt=p.shirt, role=str(p.role),
+                on_pitch=_on_pitch(match, p.id, t), minutes=float(data.get("minutes") or 0.0),
+                xgi=float((data.get("xg") or 0.0) + (data.get("xa") or 0.0)), xg=float(data.get("xg") or 0.0),
+                goals=int(data.get("goals") or 0), assists=int(data.get("assists") or 0),
+                shots=int(data.get("shots") or 0), ball_wins=int(data.get("ball_wins") or 0),
+                yellow_cards=len(cards) - reds, red_cards=reds,
+                pass_speed_avg=round(sum(speeds) / len(speeds), 1) if speeds else None,
+                pass_speed_max=max(speeds, default=None)))
+    return sorted(rows, key=lambda r: (-r.xgi, r.name))

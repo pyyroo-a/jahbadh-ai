@@ -1,6 +1,6 @@
 // The desk's JSON endpoints. Errors carry the server's friendly detail line, ready to show as it is.
 
-import type { DeskConfig, Language, Persona, PlayerFollow } from "./types";
+import type { DeskConfig, Language, Persona, PlayerFollow, PlayerRow } from "./types";
 
 export class ApiError extends Error {
   status: number;
@@ -51,3 +51,6 @@ export const getFollow = (matchId: string, playerId: string, t: number, runId: s
   call<PlayerFollow>(runId
     ? `/api/live/${runId}/follow/${playerId}?t=${t}`
     : `/api/replay/${matchId}/follow/${playerId}?t=${t}`);
+
+export const getPlayers = (matchId: string, t: number, runId: string | null = null) =>
+  call<PlayerRow[]>(runId ? `/api/live/${runId}/players?t=${t}` : `/api/replay/${matchId}/players?t=${t}`);

@@ -195,6 +195,27 @@ export interface PlayerFollow {
   event_ids: number[];
 }
 
+/** One line of Player watch: what a player has done up to t. Pass speeds are synthetic. */
+export interface PlayerRow {
+  player_id: string;
+  name: string;
+  team_id: string;
+  shirt: number;
+  role: string;
+  on_pitch: boolean;
+  minutes: number;
+  xgi: number;
+  xg: number;
+  goals: number;
+  assists: number;
+  shots: number;
+  ball_wins: number;
+  yellow_cards: number;
+  red_cards: number;
+  pass_speed_avg: number | null;
+  pass_speed_max: number | null;
+}
+
 export interface MetricChoice {
   key: string;
   label: string;

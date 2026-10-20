@@ -18,7 +18,7 @@ from jahbadh.api.config import ApiSettings, load_api_settings
 from jahbadh.api.limits import DailyLimit
 from jahbadh.api.live_routes import router as live_router
 from jahbadh.api.overlay import OverlayCue
-from jahbadh.api.personal import METRIC_CHOICES, PlayerFollow, player_follow
+from jahbadh.api.personal import METRIC_CHOICES, PlayerFollow, PlayerRow, player_follow, player_table
 from jahbadh.api.replay import Sleep, paced, to_sse
 from jahbadh.api.showcase import Showcase, load_showcases
 from jahbadh.api.stream import MatchInfo, StreamItem
@@ -133,6 +133,11 @@ def create_app(settings: ApiSettings | None = None, desk_factory: DeskFactory | 
             return player_follow(show.match, player_id, t)
         except KeyError:
             raise HTTPException(404, f"No player called {player_id} in this match.") from None
+
+    @app.get("/api/replay/{match_id}/players")
+    def replay_players(show: Annotated[Showcase, Depends(_showcase)],
+                       t: Annotated[float, Query(ge=0, le=5400)]) -> list[PlayerRow]:
+        return player_table(show.match, t)
 
     app.include_router(live_router)
     if (settings.web_dist / "index.html").is_file():

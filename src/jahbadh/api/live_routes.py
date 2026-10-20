@@ -21,7 +21,7 @@ from jahbadh.agents.llm import make_chat_client
 from jahbadh.agents.localize import AzureTranslator
 from jahbadh.api.live import LiveRun
 from jahbadh.api.overlay import OverlayCue
-from jahbadh.api.personal import PlayerFollow, player_follow
+from jahbadh.api.personal import PlayerFollow, PlayerRow, player_follow, player_table
 from jahbadh.api.replay import to_sse
 from jahbadh.schemas import Match
 from jahbadh.simulator import simulate_match
@@ -123,6 +123,13 @@ async def live_follow(run: Annotated[LiveRun, Depends(_run)], player_id: str,
         return await asyncio.to_thread(player_follow, run.match, player_id, min(t, run.clock))
     except KeyError:
         raise HTTPException(404, f"No player called {player_id} in this match.") from None
+
+
+@router.get("/{run_id}/players")
+async def live_players(run: Annotated[LiveRun, Depends(_run)],
+                       t: Annotated[float, Query(ge=0, le=5400)]) -> list[PlayerRow]:
+    """Player watch's table up to t, but never past the clock."""
+    return await asyncio.to_thread(player_table, run.match, min(t, run.clock))
 
 
 @router.post("/{run_id}/skip")
