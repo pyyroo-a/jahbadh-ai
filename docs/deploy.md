@@ -80,9 +80,10 @@ foreach ($ns in "Microsoft.App", "Microsoft.OperationalInsights", "Microsoft.Con
 ```powershell
 azd env new jahbadh
 azd env set AZURE_LOCATION uaenorth
+azd env set AZURE_SUBSCRIPTION_ID (az account show --query id -o tsv)
 ```
 
-azd asks which subscription to use: pick the student one.
+The last line pins the environment to the subscription `az` is on, which you picked in step 2. Set it even if azd didn't ask, so it can never fall back to another subscription on your account.
 
 Find the Translator resource's name and save it:
 
@@ -97,7 +98,14 @@ Make a fresh random ingest token. This line makes it and saves it in one go, so 
 azd env set JAHBADH_INGEST_TOKEN (.venv\Scripts\python -c "import secrets; print(secrets.token_urlsafe(24))")
 ```
 
-**Check it:** `azd env get-values` lists `AZURE_LOCATION="uaenorth"`, `TRANSLATOR_NAME` and `JAHBADH_INGEST_TOKEN`. Never paste the token into a chat.
+**Check it** (the first line hides the token, so it's safe to screenshot):
+
+```powershell
+azd env get-values | Select-String -NotMatch "TOKEN"
+if (azd env get-value JAHBADH_INGEST_TOKEN) { "token is set" }
+```
+
+**You should see:** `AZURE_ENV_NAME="jahbadh"`, `AZURE_LOCATION="uaenorth"`, your Azure for Students `AZURE_SUBSCRIPTION_ID` and `TRANSLATOR_NAME`, then `token is set`. Never paste the token into a chat.
 
 ## 5. Preview what will be made
 

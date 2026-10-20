@@ -108,12 +108,14 @@ resource pull 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   }
 }
 
-// Only the Consumption profile: pay for what runs, no plan management fee.
-resource environment 'Microsoft.App/managedEnvironments@2024-03-01' = {
+// Only the Consumption profile: pay for what runs, no plan management fee. The mode is set on purpose: left
+// unset, Azure makes an Express environment, and Express can't mount the file share.
+resource environment 'Microsoft.App/managedEnvironments@2026-07-01' = {
   name: 'cae-jahbadh-${suffix}'
   location: location
   tags: tags
   properties: {
+    environmentMode: 'WorkloadProfiles'
     appLogsConfiguration: {
       destination: 'log-analytics'
       logAnalyticsConfiguration: {
@@ -128,7 +130,7 @@ resource environment 'Microsoft.App/managedEnvironments@2024-03-01' = {
   }
 }
 
-resource stateStorage 'Microsoft.App/managedEnvironments/storages@2024-03-01' = {
+resource stateStorage 'Microsoft.App/managedEnvironments/storages@2026-07-01' = {
   parent: environment
   name: 'state'
   properties: {

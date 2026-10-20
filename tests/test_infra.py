@@ -29,6 +29,15 @@ def test_the_app_never_runs_two_copies():
         assert "@minValue(0)" in block and "@maxValue(1)" in block and "= 0" in block
 
 
+def test_the_environment_is_a_standard_one_that_can_mount_the_share():
+    # left unset, Azure made an Express environment (20 Oct), and Express refuses Azure Files storage
+    app = read("app.bicep")
+    env = re.search(r"resource environment 'Microsoft\.App/managedEnvironments@([^']+)' = \{(.*?)\n\}", app, re.S)
+    assert env and env.group(1) >= "2026-07-01"
+    assert "environmentMode: 'WorkloadProfiles'" in env.group(2)
+    assert "workloadProfileType: 'Consumption'" in env.group(2) and "Dedicated" not in env.group(2)
+
+
 def test_only_allowed_regions_can_be_picked():
     block = param_block(read("main.bicep"), "location")
     listed = re.search(r"@allowed\(\[(.*?)\]\)", block, re.S)
