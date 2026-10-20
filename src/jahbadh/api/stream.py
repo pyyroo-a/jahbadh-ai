@@ -18,7 +18,7 @@ StreamKind = Literal["match", "event", "state", "thinking", "feed", "failure", "
 
 class MatchInfo(BaseModel):
     match_id: str
-    mode: Literal["replay", "live"]
+    mode: Literal["replay", "live", "ingest"]
     home: Team
     away: Team
     speed: float

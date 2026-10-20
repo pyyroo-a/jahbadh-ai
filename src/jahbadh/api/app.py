@@ -16,6 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from jahbadh.agents.desk import Desk
 from jahbadh.api.config import ApiSettings, load_api_settings
 from jahbadh.api.limits import DailyLimit
+from jahbadh.api.ingest_routes import active_ingest, router as ingest_router
 from jahbadh.api.live_routes import router as live_router
 from jahbadh.api.overlay import OverlayCue
 from jahbadh.api.personal import METRIC_CHOICES, PlayerFollow, PlayerRow, player_follow, player_table
@@ -57,13 +58,15 @@ def create_app(settings: ApiSettings | None = None, desk_factory: DeskFactory | 
         app.state.timelines = {mid: replay_timeline(s) for mid, s in app.state.showcases.items()}
         app.state.cue_timelines = {mid: _cue_timeline(items) for mid, items in app.state.timelines.items()}
         yield
-        if app.state.live is not None:               # stopping the server never leaves model calls running
-            await app.state.live.cancel()
+        for run in (app.state.live, app.state.ingest):   # stopping the server never leaves model calls running
+            if run is not None:
+                await run.cancel()
 
     app = FastAPI(title="Jahbadh desk", lifespan=lifespan)
     app.state.settings, app.state.desk_factory, app.state.sleep, app.state.now = settings, desk_factory, sleep, now
     app.state.limit = DailyLimit(settings.state_dir / "live.json", settings.live_per_day)
     app.state.live, app.state.live_lock = None, asyncio.Lock()
+    app.state.ingest = None
 
     @app.get("/api/health")
     def health() -> dict:
@@ -79,6 +82,8 @@ def create_app(settings: ApiSettings | None = None, desk_factory: DeskFactory | 
                            "away": s.match.meta.away.name, "score": s.match.meta.score,
                            "model": s.desk.model, "created": s.desk.created} for s in shows],
             "metric_choices": [c.model_dump() for c in METRIC_CHOICES.values()],
+            "ingest": {"on": bool(settings.ingest_token),
+                       "run_id": run.run_id if (run := active_ingest(request.app.state)) else None},
         }
 
     async def play(items: list[StreamItem], speed: float, from_t: float,
@@ -140,6 +145,7 @@ def create_app(settings: ApiSettings | None = None, desk_factory: DeskFactory | 
         return player_table(show.match, t)
 
     app.include_router(live_router)
+    app.include_router(ingest_router)
     if (settings.web_dist / "index.html").is_file():
         app.mount("/", StaticFiles(directory=settings.web_dist, html=True), name="ui")
     return app

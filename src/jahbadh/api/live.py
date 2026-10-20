@@ -46,17 +46,23 @@ class LiveRun:
     def __init__(self, run_id: str, match: Match, desk: Desk, speed: float = LIVE_SPEED,
                  sleep: Sleep = asyncio.sleep, now: Callable[[], float] = time.monotonic,
                  idle_s: float = LIVE_IDLE_S):
+        model = getattr(desk.client, "model", None) or type(desk.client).__name__
+        self._setup(run_id, match, desk, speed, sleep, now, idle_s, mode="live", model=str(model))
+        self.moments = key_moments(match)
+
+    def _setup(self, run_id: str, match: Match, desk: Desk | None, speed: float, sleep: Sleep,
+               now: Callable[[], float], idle_s: float, mode: str, model: str) -> None:
+        """The state every run shares: live here, and ingest in jahbadh.api.ingest."""
         self.run_id, self.match, self.desk, self.speed = run_id, match, desk, speed
         self.sleep, self.now, self.idle_s = sleep, now, idle_s
         self.clock = 0.0
         self.done = False
-        self.moments = key_moments(match)
+        self.moments: list[Moment] = []
         self.combos: list[tuple[Persona, Language]] = []
         meta = match.meta
-        model = getattr(desk.client, "model", None) or type(desk.client).__name__
         self.history: list[StreamItem] = [StreamItem(t=0.0, kind="match", data=MatchInfo(
-            match_id=meta.match_id, mode="live", home=meta.home, away=meta.away, speed=speed, precomputed=False,
-            model=str(model), created=datetime.now(UTC).isoformat(), moment_times=[]))]
+            match_id=meta.match_id, mode=mode, home=meta.home, away=meta.away, speed=speed, precomputed=False,
+            model=model, created=datetime.now(UTC).isoformat(), moment_times=[]))]
         self._started: set[str] = set()              # moments that have begun, key or requested
         self._tasks: set[asyncio.Task] = set()        # moments and combo renders still working
         self._english: dict[tuple[str, str], asyncio.Task] = {}   # (moment, persona): its English, rendered once

@@ -31,6 +31,7 @@ OFF = "Live mode is switched off on this server. Replay is the very same desk, p
 NOT_SET_UP = "Live mode is not set up on this server."
 CAP = "Live mode has used all of today's live runs ({n} a day). Replay is still open, and it is the same desk."
 FINISHED = "This match has finished."
+INGEST_BUSY = "An outside feed is playing right now. Watch it, or try again when it ends."
 
 router = APIRouter(prefix="/api/live")
 
@@ -71,6 +72,9 @@ async def start_live(request: Request) -> dict:
         run: LiveRun | None = state.live
         if run is not None and not run.done:
             return {"run_id": run.run_id, "joined": True, "remaining": state.limit.remaining()}
+        feed = getattr(state, "ingest", None)
+        if feed is not None and not feed.done and not feed.stale:
+            raise HTTPException(409, INGEST_BUSY)
         if state.limit.remaining() <= 0:
             raise _cap_reached(request)
         seed = random.randint(100, 9999)

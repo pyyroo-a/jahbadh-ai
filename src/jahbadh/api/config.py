@@ -12,6 +12,7 @@ API_ENV_VARS: dict[str, str] = {
     "state_dir": "JAHBADH_STATE_DIR",
     "showcase_dir": "JAHBADH_SHOWCASE_DIR",
     "web_dist": "JAHBADH_WEB_DIST",
+    "ingest_token": "JAHBADH_INGEST_TOKEN",
 }
 TRUE_WORDS = {"on", "1", "true"}
 
@@ -22,6 +23,7 @@ class ApiSettings(BaseModel):
     state_dir: Path = Path("data/state")
     showcase_dir: Path = Path("data/showcase")
     web_dist: Path = Path("web/dist")
+    ingest_token: str | None = None       # ingest is off unless set; every write must carry it
 
 
 def load_api_settings(env_file: Path | None = Path(".env")) -> ApiSettings:

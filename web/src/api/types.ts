@@ -109,7 +109,7 @@ export interface MomentFailure {
 
 export interface MatchInfo {
   match_id: string;
-  mode: "replay" | "live";
+  mode: "replay" | "live" | "ingest";
   home: Team;
   away: Team;
   speed: number;
