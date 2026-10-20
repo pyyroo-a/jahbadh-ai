@@ -33,7 +33,7 @@ KEY_KINDS = ("goal", "big_chance", "card", "substitution", "formation_change", "
 LIVE_SPEED = 6.0
 LIVE_IDLE_S = 60.0
 LIVE_CONCURRENCY = 3
-LIVE_MAX_COMBOS = 2
+LIVE_MAX_COMBOS = 8                                  # every persona and language besides pundit/en
 SKIP_LEAD_S = 3.0
 DEFAULT_COMBO: tuple[Persona, Language] = ("pundit", "en")
 

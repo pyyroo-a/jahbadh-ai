@@ -105,7 +105,7 @@ def test_combo_rejects_unknown_personas(tmp_path):
         assert c.post(f"/api/live/{rid}/combo", json={"persona": "casual", "language": "fr"}).status_code == 422
         accepted = [c.post(f"/api/live/{rid}/combo", json={"persona": p, "language": lang}).json()["accepted"]
                     for p, lang in (("casual", "en"), ("pundit", "ar"), ("fantasy", "es"))]
-        assert accepted == [True, True, False]
+        assert accepted == [True, True, True]
 
 
 def test_combo_after_full_time_says_the_match_has_finished(tmp_path):
@@ -116,13 +116,12 @@ def test_combo_after_full_time_says_the_match_has_finished(tmp_path):
             {"accepted": False, "reason": "finished"}
 
 
-def test_a_third_combo_says_the_limit_is_reached(tmp_path):
+def test_a_live_match_takes_every_extra_version(tmp_path):
     with TestClient(live_app(tmp_path, sleep=blocked)) as c:
         rid = c.post("/api/live").json()["run_id"]
         replies = [c.post(f"/api/live/{rid}/combo", json={"persona": p, "language": lang}).json()
-                   for p, lang in (("casual", "en"), ("pundit", "ar"), ("fantasy", "es"))]
-        assert replies == [{"accepted": True, "reason": None}, {"accepted": True, "reason": None},
-                           {"accepted": False, "reason": "limit"}]
+                   for p in ("pundit", "casual", "fantasy") for lang in ("en", "ar", "es")]
+        assert replies == [{"accepted": True, "reason": None}] * 9
 
 
 def test_config_reports_live_runs_left(tmp_path):

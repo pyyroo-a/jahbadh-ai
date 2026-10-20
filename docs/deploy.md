@@ -23,9 +23,9 @@ This guide puts the desk on Azure Container Apps, signed in without keys and tra
 | Storage account and file share | a few cents |
 | Building and shipping on GitHub Actions | free (public repo) |
 | Log Analytics and traces | free: the app's logs are capped, and the traces are small |
-| A live run ("Run a fresh match" or a spotlight) | about $0.50 each, at most 3 a day |
+| A live run ("Run a fresh match" or a spotlight) | about $0.35 for the desk's own lines, about $0.70 to $0.85 if a viewer adds all 8 extra versions, at most 3 a day |
 
-So the setup is about $7 to $8 until 10 Nov, plus live runs. If judges used all 3 live runs every day from 25 Oct to 10 Nov, that adds at most about $25. The credit had about $90 left on 20 Oct.
+So the setup is about $8 until 10 Nov, plus live runs. If judges used all 3 live runs every day from 25 Oct to 10 Nov (about 51 runs) and added every version each time, that adds at most about $40 to $45. The credit had about $95 left on 20 Oct, and the budget alerts at $50 and $80 (step 11) would tell you well before it runs out.
 
 The commands below are for PowerShell, run from the repo folder.
 
@@ -230,7 +230,7 @@ az monitor log-analytics workspace update --resource-group rg-jahbadh-ai --works
 
 ## 12. One live run
 
-**Cost:** about $0.50, and it uses one of today's 3 live runs. Only run it after a yes.
+**Cost:** about $0.35, or about $0.70 to $0.85 if you add all 8 extra versions, and it uses one of today's 3 live runs. Only run it after a yes.
 
 Open the site and press **Run a fresh match** in the top bar, next to the replay speeds. Agent lines arrive about 1 to 2 minutes after each key moment.
 

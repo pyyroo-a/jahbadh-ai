@@ -200,15 +200,18 @@ def test_spotlight_runs_at_the_current_clock():
     assert f"spotlight-RMU-33-{int(at)}" in feeds and len(feeds) == 17
 
 
-def test_only_two_extra_combos_per_run():
+EXTRA_COMBOS = [(p, lang) for p in ("pundit", "casual", "fantasy") for lang in ("en", "ar", "es")
+                if (p, lang) != ("pundit", "en")]
+
+
+def test_every_extra_combo_is_allowed_in_a_live_run():
     run = run_with()
     assert run.add_combo("pundit", "en") is True             # the default never counts
-    assert [run.add_combo("casual", "en"), run.add_combo("pundit", "ar"), run.add_combo("fantasy", "es")] == \
-        [True, True, False]
+    assert [run.add_combo(p, lang) for p, lang in EXTRA_COMBOS] == [True] * 8
     assert run.add_combo("casual", "en") is True             # one that already exists is fine
     asyncio.run(drain(run))
     renders = [i for i in run.history if i.kind == "renders"]
-    assert len(renders) == 2 * 16
+    assert len(renders) == 8 * 16
     for n, i in enumerate(run.history):
         if i.kind == "renders":
             assert any(h.kind == "feed" and h.data.moment.id == i.data.moment_id for h in run.history[:n])

@@ -18,7 +18,7 @@ export const LAYER_LABELS: Record<Rejection["layer"], string> = {
 };
 
 export const COMBO_NOTICES = {
-  limit: "This live match already has its two extra versions.",
+  limit: "This live match can't take another version just now.",
   finished: "This live match has ended, so there's nothing new to add.",
   failed: "That version couldn't be added just now. Please try again.",
 };
