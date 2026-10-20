@@ -19,6 +19,8 @@ type Props = {
   choices: MetricChoice[];
   calm?: boolean;                           // the Fan view: rejected drafts stay folded
   detail?: boolean;                         // the Analyst view: drafts open, figures and citations on show
+  reorder?: (items: FeedItem[]) => FeedItem[];   // Player watch: lines about your players first
+  title?: string;
 };
 
 function badge(mode: Mode, desk: DeskState, choices: MetricChoice[]): string | null {
@@ -66,10 +68,11 @@ export default function DeskFeed(props: Props) {
   const { desk, notice } = props;
   // The full-time recaps lead (a favourite club's own first), then everything else, newest first.
   const recaps = recapOrder(desk.items, props.mode);
-  const newestFirst = [...recaps, ...[...desk.items].reverse().filter((i) => !recaps.includes(i))];
+  const byTime = [...recaps, ...[...desk.items].reverse().filter((i) => !recaps.includes(i))];
+  const newestFirst = props.reorder ? props.reorder(byTime) : byTime;
   return (
     <section className="column feed">
-      <h2>Desk feed</h2>
+      <h2>{props.title ?? "Desk feed"}</h2>
       {desk.info && desk.info.mode !== "replay" && <div className="note">{SPEED_NOTE}</div>}
       {notice && <div className="note">{notice}</div>}
       {desk.thinking.map((m) => <div key={m.id} className="thinking">The desk is thinking about {m.label}...</div>)}

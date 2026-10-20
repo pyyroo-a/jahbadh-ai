@@ -38,3 +38,8 @@ export const FEED_LABELS = {
 
 /** Shown in live and ingest mode, where the desk's lines take a minute or two. */
 export const SPEED_NOTE = "Quick lines arrive straight away. The desk's checked lines land a minute or two after each moment.";
+
+export const WATCH_LABELS = {
+  table: "Player watch · sort by any column · click a player to follow",
+  feed: "Desk lines about your players first",
+};

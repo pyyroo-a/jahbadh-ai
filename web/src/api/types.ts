@@ -193,6 +193,7 @@ export interface PlayerFollow {
   heatmap: Metric;
   physical: Metric;
   passing: Metric;
+  pass_speed: Metric;              // synthetic, from the simulator
   event_ids: number[];
 }
 

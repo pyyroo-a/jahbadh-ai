@@ -21,6 +21,7 @@ class PlayerFollow(BaseModel):
     heatmap: Metric
     physical: Metric
     passing: Metric
+    pass_speed: Metric               # synthetic, from the simulator
     event_ids: list[int]
 
 
@@ -61,13 +62,15 @@ def player_follow(match: Match, player_id: str, t: float) -> PlayerFollow:
     if impact is None:
         an.player_physical(match, player_id, 0, 1)                         # same KeyError at kickoff
         metrics = [_empty("player_impact", player_id, "xGI"), _empty("heatmap", player_id, "samples"),
-                   _empty("physical", player_id, "km"), _empty("pass_quality", player_id, "difficulty")]
+                   _empty("physical", player_id, "km"), _empty("pass_quality", player_id, "difficulty"),
+                   _empty("pass_speed", player_id, "km/h")]
     else:
         metrics = [impact, an.heatmap(match, player_id, 0, t), an.player_physical(match, player_id, 0, t),
-                   an.pass_quality(match, player_id, 0, t)]
+                   an.pass_quality(match, player_id, 0, t), an.pass_speed(match, player_id, 0, t)]
     events = [e.id for e in match.events if e.t < t and player_id in (e.player_id, e.related_player_id)]
     return PlayerFollow(player_id=player_id, t=t, on_pitch=_on_pitch(match, player_id, t), impact=metrics[0],
-                        heatmap=metrics[1], physical=metrics[2], passing=metrics[3], event_ids=sorted(events))
+                        heatmap=metrics[1], physical=metrics[2], passing=metrics[3], pass_speed=metrics[4],
+                        event_ids=sorted(events))
 
 
 class PlayerRow(BaseModel):

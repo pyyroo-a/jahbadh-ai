@@ -54,3 +54,10 @@ def test_parse_sse_reads_events_and_skips_pings():
     text = 'event: tick\ndata: {"t":0}\nid: 1\n\n: ping\n\nevent: end\ndata: {"reason": "full_time"}\n\n'
     assert parse_sse(text) == [{"event": "tick", "data": {"t": 0}, "id": "1"},
                                {"event": "end", "data": {"reason": "full_time"}}]
+
+
+def test_follow_carries_the_players_synthetic_pass_speed():
+    m = demo_match()
+    f = player_follow(m, "RMU-33", 1318)
+    assert f.pass_speed.name == "pass_speed" and f.pass_speed.window == (0.0, 1318.0) and f.pass_speed.data["synthetic"]
+    assert player_follow(m, "RMU-33", 0).pass_speed.value is None

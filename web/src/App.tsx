@@ -9,6 +9,7 @@ import FollowPanel from "./components/FollowPanel";
 import HighlightsStrip from "./components/HighlightsStrip";
 import AnalystLayout from "./components/layouts/AnalystLayout";
 import FanLayout from "./components/layouts/FanLayout";
+import PlayerWatchLayout from "./components/layouts/PlayerWatchLayout";
 import MetricFocus from "./components/MetricFocus";
 import ModeBar from "./components/ModeBar";
 import OverlayPreview, { LowerThirds } from "./components/OverlayPreview";
@@ -18,10 +19,11 @@ import TopBar from "./components/TopBar";
 import { comboWaiting, initialDesk, reduce, replaySkip } from "./state/desk";
 import type { Selection } from "./state/evidence";
 import { highlights } from "./state/highlights";
-import { COMBO_NOTICES } from "./state/labels";
+import { COMBO_NOTICES, WATCH_LABELS } from "./state/labels";
 import { layoutFor } from "./state/layout";
 import { activeCues, tickingClock } from "./state/overlay";
-import { claimTags, inFocus, type Mode } from "./state/personal";
+import { claimTags, inFocus, rankClaims, type Mode } from "./state/personal";
+import { followFirst } from "./state/players";
 import { usePhone } from "./state/usePhone";
 
 export default function App() {
@@ -195,6 +197,14 @@ export default function App() {
       ) : layout === "analyst" && info ? (
         <AnalystLayout desk={desk} info={info} phone={phone} tactical={tacticalView} tacticalOpen={selection !== null}
           feed={<DeskFeed {...feedProps} notice={notice} />} />
+      ) : layout === "watch" && info ? (
+        <PlayerWatchLayout desk={desk} info={info} phone={phone} clock={clock} runId={liveRunId}
+          followed={mode.kind === "player" ? mode.playerId : null}
+          onFollow={(playerId) => { setMode({ kind: "player", playerId }); setSelection(null); }}
+          tactical={tacticalView}
+          feed={<DeskFeed {...feedProps} notice={notice} title={mode.kind === "player" ? WATCH_LABELS.feed : undefined}
+            reorder={mode.kind === "player" ? (items) => followFirst(items, (item) =>
+              rankClaims(item, mode, info, desk.eventsById, choices).some((r) => r.focus)) : undefined} />} />
       ) : (
         <main className="columns">
           <EventStream events={events} language={language} highlighted={highlighted}

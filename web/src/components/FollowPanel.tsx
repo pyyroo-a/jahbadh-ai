@@ -44,13 +44,14 @@ export default function FollowPanel({ info, playerId, clock, runId, items, perso
     <section className="follow">
       <h3>Following {player?.name ?? playerId}{follow && !follow.on_pitch ? " · not on the pitch" : ""}</h3>
       <div className="stat-row">
-        <div className="stat"><b>{num(physical.distance_km, 1, " km")}</b>Distance</div>
-        <div className="stat"><b>{num(physical.top_speed_kmh, 1, " km/h")}</b>Top speed</div>
+        <div className="stat"><b>{num(physical.distance_km, 1, " km")}</b>Distance <span className="sim">Simulated</span></div>
+        <div className="stat"><b>{num(physical.top_speed_kmh, 1, " km/h")}</b>Top speed <span className="sim">Simulated</span></div>
+        <div className="stat"><b>{num(follow?.pass_speed.value, 1, " km/h")}</b>Pass speed <span className="sim">Simulated</span></div>
         <div className="stat"><b>{num(follow?.impact.value, 2)}</b>xG involvement</div>
         <div className="stat"><b>{num(follow?.passing.value, 2)}</b>Pass difficulty</div>
         <div className="stat"><b>{num(follow?.impact.data.touches, 0)}</b>Touches</div>
       </div>
-      <div className="note">Distance and speed come from the simulated tracking data, and pass difficulty from the simulator's pass odds.</div>
+      <div className="note">Distance and speed come from the simulated tracking data, pass difficulty from the simulator's pass odds, and pass speed from the simulator too.</div>
       {spotlights.flatMap((i) => i.claims.map((c) => {
         const shown = claimText(i, c.id, persona, language);
         return <p key={c.id} className="spotlight-line" dir={shown.dir}>{shown.text}</p>;
