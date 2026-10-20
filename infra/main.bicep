@@ -19,6 +19,9 @@ param foundryName string = 'jahbadh-foundry'
 @description('The Translator resource, by name.')
 param translatorName string
 
+@description('The Application Insights that Foundry was connected to when it was made. The app sends traces here.')
+param foundryInsightsName string = 'jahbadh-foundry-appinsights'
+
 @description('1 keeps one copy always on (judging week), 0 lets it sleep when nobody is watching.')
 @minValue(0)
 @maxValue(1)
@@ -54,6 +57,12 @@ resource translator 'Microsoft.CognitiveServices/accounts@2024-10-01' existing =
   scope: foundryGroup
 }
 
+// Foundry's Tracing reads this one, so the app's traces go straight to it. Only read here.
+resource foundryInsights 'Microsoft.Insights/components@2020-02-02' existing = {
+  name: foundryInsightsName
+  scope: foundryGroup
+}
+
 module app 'app.bicep' = {
   name: 'jahbadh-app'
   scope: appGroup
@@ -64,6 +73,7 @@ module app 'app.bicep' = {
     ingestToken: ingestToken
     foundryKey: foundryKey
     translatorKey: translatorKey
+    appInsightsConnectionString: foundryInsights.properties.ConnectionString
     apiExists: apiExists
     foundryBaseUrl: 'https://${foundryName}.services.ai.azure.com/openai/v1/'
     translatorResourceId: translator.id
@@ -75,7 +85,7 @@ output AZURE_LOCATION string = location
 output AZURE_RESOURCE_GROUP string = appGroup.name
 output AZURE_CONTAINER_REGISTRY_ENDPOINT string = app.outputs.registryEndpoint
 output SERVICE_API_URI string = app.outputs.uri
-output APPLICATIONINSIGHTS_NAME string = app.outputs.appInsightsName
+output APPLICATIONINSIGHTS_NAME string = foundryInsights.name
 output APP_IDENTITY_PRINCIPAL_ID string = app.outputs.identityPrincipalId
 output AZURE_DEPLOY_CLIENT_ID string = app.outputs.deployClientId
 output FOUNDRY_RESOURCE_GROUP string = foundryResourceGroup

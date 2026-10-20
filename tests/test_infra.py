@@ -38,6 +38,17 @@ def test_the_environment_is_a_standard_one_that_can_mount_the_share():
     assert "workloadProfileType: 'Consumption'" in env.group(2) and "Dedicated" not in env.group(2)
 
 
+def test_traces_go_to_the_application_insights_foundry_reads():
+    # Foundry was already connected to its own Application Insights (20 Oct), so the app sends traces there
+    main, app = read("main.bicep"), read("app.bicep")
+    assert "Microsoft.Insights/components" not in app            # no second Application Insights of our own
+    existing = re.search(r"resource \w+ 'Microsoft\.Insights/components@[^']+' existing = \{(.*?)\n\}", main, re.S)
+    assert existing and "scope: foundryGroup" in existing.group(1)
+    assert "param foundryInsightsName string = 'jahbadh-foundry-appinsights'" in main
+    assert "@secure()" in param_block(app, "appInsightsConnectionString")
+    assert "{ name: 'appinsights-connection', value: appInsightsConnectionString }" in app
+
+
 def test_only_allowed_regions_can_be_picked():
     block = param_block(read("main.bicep"), "location")
     listed = re.search(r"@allowed\(\[(.*?)\]\)", block, re.S)

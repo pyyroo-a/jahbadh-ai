@@ -15,6 +15,9 @@ param foundryKey string
 @secure()
 param translatorKey string
 
+@secure()
+param appInsightsConnectionString string
+
 param apiExists bool
 param foundryBaseUrl string
 param translatorResourceId string
@@ -27,7 +30,8 @@ var appName = 'ca-jahbadh'
 var placeholderImage = 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
 var acrPull = '7f951dda-4ed3-4680-a7ca-43fe172d538d' // AcrPull
 
-// Logs and traces. The daily cap keeps the month under the free 5 GB.
+// The app's container logs. The daily cap keeps the month under the free 5 GB. Traces go to Foundry's own
+// Application Insights instead (see main.bicep), so they show up in Foundry.
 resource logs 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
   name: 'log-jahbadh-${suffix}'
   location: location
@@ -36,18 +40,6 @@ resource logs 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
     sku: { name: 'PerGB2018' }
     retentionInDays: 30
     workspaceCapping: { dailyQuotaGb: json('0.15') }
-  }
-}
-
-// Agent traces land here, and Foundry's Tracing page reads them once it is connected.
-resource insights 'Microsoft.Insights/components@2020-02-02' = {
-  name: 'appi-jahbadh-${suffix}'
-  location: location
-  tags: tags
-  kind: 'web'
-  properties: {
-    Application_Type: 'web'
-    WorkspaceResourceId: logs.id
   }
 }
 
@@ -228,7 +220,7 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
       ]
       secrets: concat([
         { name: 'ingest-token', value: ingestToken }
-        { name: 'appinsights-connection', value: insights.properties.ConnectionString }
+        { name: 'appinsights-connection', value: appInsightsConnectionString }
       ], keySecrets)
     }
     template: {
@@ -271,6 +263,5 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
 
 output registryEndpoint string = registry.properties.loginServer
 output uri string = 'https://${app.properties.configuration.ingress.fqdn}'
-output appInsightsName string = insights.name
 output identityPrincipalId string = identity.properties.principalId
 output deployClientId string = deployIdentity.properties.clientId

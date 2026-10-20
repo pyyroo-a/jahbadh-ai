@@ -7,11 +7,11 @@ This guide puts the desk on Azure Container Apps, signed in without keys and tra
 - a Container Apps environment (Consumption profile only, so there's no plan fee) and the container app `ca-jahbadh` (0.5 vCPU, 1 GiB, never more than one copy)
 - a Container Registry (Basic) for the image
 - a storage account with a small file share, `state`, which keeps the daily live counter through restarts
-- Log Analytics (capped at 0.15 GB a day, so the month stays inside the free 5 GB) and Application Insights for traces
+- Log Analytics for the app's container logs (capped at 0.15 GB a day, so the month stays inside the free 5 GB); the agents' traces go to Foundry's own Application Insights, which already exists (step 10)
 - a managed identity, `id-jahbadh-app`, which the app uses to sign in to the registry, Foundry and Translator
 - a second identity, `id-jahbadh-deploy`, which GitHub's Deploy workflow signs in as to ship new versions (it can only change `rg-jahbadh-app`)
 
-**What stays put.** Foundry, the `gpt-5-mini` deployment and Translator stay in `rg-jahbadh-ai`. The templates only read them. The one thing that touches that group is step 8, which gives the app's identity two roles there, and you run it with its own command. So `azd down` never sees `rg-jahbadh-ai` and can never remove it.
+**What stays put.** Foundry, the `gpt-5-mini` deployment and Translator stay in `rg-jahbadh-ai`. The templates only read them. The templates also read the connection string of Foundry's own Application Insights there, so traces show up in Foundry. The one thing that adds anything to that group is step 8, which gives the app's identity two roles there, and you run it with its own command (step 10 also has an optional daily cap you can set there). So `azd down` never sees `rg-jahbadh-ai` and can never remove it.
 
 **What it costs until 10 Nov** (UAE North prices, checked 19 Oct):
 
@@ -22,7 +22,7 @@ This guide puts the desk on Azure Container Apps, signed in without keys and tra
 | Container app always on for judging (`MIN_REPLICAS 1`, 25 Oct to 10 Nov) | about $3.40 idle, plus a few cents an hour while people watch |
 | Storage account and file share | a few cents |
 | Building and shipping on GitHub Actions | free (public repo) |
-| Log Analytics and Application Insights | free under the daily cap |
+| Log Analytics and traces | free: the app's logs are capped, and the traces are small |
 | A live run ("Run a fresh match" or a spotlight) | about $0.50 each, at most 3 a day |
 
 So the setup is about $7 to $8 until 10 Nov, plus live runs. If judges used all 3 live runs every day from 25 Oct to 10 Nov, that adds at most about $25. The credit had about $90 left on 20 Oct.
@@ -117,7 +117,7 @@ if (azd env get-value JAHBADH_INGEST_TOKEN) { "token is set" }
 azd provision --preview
 ```
 
-**You should see:** a list of resources to create, all in `rg-jahbadh-app`: the resource group, a Log Analytics workspace, Application Insights, a container registry, a storage account, the Container Apps environment and the container app. Smaller pieces that live under these (the file share, the two identities and their roles, the environment's storage link) are made with them but not listed. Nothing should be listed in `rg-jahbadh-ai`. Read it through. If anything else shows up, stop and ask.
+**You should see:** a list of resources to create, all in `rg-jahbadh-app`: the resource group, a Log Analytics workspace, a container registry, a storage account, the Container Apps environment and the container app. Smaller pieces that live under these (the file share, the two identities and their roles, the environment's storage link) are made with them but not listed. Nothing should be listed in `rg-jahbadh-ai`. Read it through. If anything else shows up, stop and ask.
 
 ## 6. Create the resources
 
@@ -200,15 +200,23 @@ curl.exe -s -o NUL -w "%{time_total}`n" "$url/api/health"
 
 Write the number down (it goes in the README). A second request straight after should be quick.
 
-## 10. Connect Application Insights to Foundry
+## 10. Traces in Foundry: already connected
 
-**Cost:** free.
+**Cost:** free. Nothing to click.
 
-1. Open [ai.azure.com](https://ai.azure.com) and the `jahbadh` project.
-2. Open **Tracing** (under Observe or Monitoring in the left menu).
-3. Choose **Connect** and pick the Application Insights resource whose name starts with `appi-jahbadh-`.
+When you made the Foundry resource, Azure also made an Application Insights resource for it, `jahbadh-foundry-appinsights` in `rg-jahbadh-ai`, and connected it to the `jahbadh` project. The templates send the app's traces straight there (they only read its connection string), so the agents' traces land where Foundry already looks. You can check the connection without changing anything:
 
-**You should see:** the Tracing page, empty for now. Traces show up after the live run in step 12.
+```powershell
+az rest --method get --url "https://management.azure.com/subscriptions/$(azd env get-value AZURE_SUBSCRIPTION_ID)/resourceGroups/rg-jahbadh-ai/providers/Microsoft.CognitiveServices/accounts/jahbadh-foundry/projects/jahbadh/connections?api-version=2025-06-01" --query "value[].{name:name, category:properties.category}" -o table
+```
+
+**You should see:** one connection with category `AppInsights`. Traces show up after the live run in step 12.
+
+**Optional, but a good idea:** that resource's Log Analytics workspace, `jahbadh-foundry-logs`, has no daily cap. Our traces are small, well inside the free 5 GB a month, but a cap is a cheap guard. This changes a setting on a Foundry-group resource, so only run it if you're happy to:
+
+```powershell
+az monitor log-analytics workspace update --resource-group rg-jahbadh-ai --workspace-name jahbadh-foundry-logs --quota 0.15
+```
 
 ## 11. Try the budget alerts
 
@@ -230,7 +238,7 @@ Open the site and press **Run a fresh match** in the top bar, next to the replay
 - agent lines in the feed, each with evidence you can click
 - `curl.exe -s "$url/api/config"` shows `"live_remaining":2`
 - in the Azure portal, the storage account's **File shares**, then `state`, has a `live.json` (so the counter survives restarts)
-- in Foundry's Tracing page, after a few minutes, traces for the agents (analyst, tactical, writer, referee)
+- after a few minutes, traces for the agents (analyst, tactical, writer, referee): in the Azure portal, open `jahbadh-foundry-appinsights`, then **Search** (or **Transaction search**), and in Foundry wherever this project lists traces
 
 If the feed says live mode isn't set up, or the lines never come, the roles from step 8 may still be settling. Wait 10 minutes and try once more. If it still fails, use step 13.
 
