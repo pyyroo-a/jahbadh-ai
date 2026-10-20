@@ -28,3 +28,13 @@ export const NOTES: Record<string, string> = {
   "english fallback": "Shown in English",
   "raw translation": "Machine translation",
 };
+
+export const TACTICAL_CARD = { title: "Tactical view", hint: "Shapes, heatmaps and evidence. Tap to open." };
+
+export const FEED_LABELS = {
+  happening: "What's happening",
+  more: (n: number) => `Show ${n} more ${n === 1 ? "event" : "events"}`,
+};
+
+/** Shown in live and ingest mode, where the desk's lines take a minute or two. */
+export const SPEED_NOTE = "Quick lines arrive straight away. The desk's checked lines land a minute or two after each moment.";

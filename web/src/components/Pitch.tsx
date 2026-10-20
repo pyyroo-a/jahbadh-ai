@@ -26,7 +26,7 @@ function LayerShapes({ info, layer }: { info: MatchInfo; layer: Layer }) {
   switch (layer.kind) {
     case "heat": {
       const top = Math.max(...layer.cells.map((c) => c.v));
-      return <g>{layer.cells.map((c, i) => (
+      return <g filter="url(#heat-smooth)">{layer.cells.map((c, i) => (
         <rect key={i} x={c.x} y={c.y} width={c.w} height={c.h} fill={colour(info, layer.team)} opacity={0.15 + 0.7 * (c.v / top)} />
       ))}</g>;
     }
@@ -71,11 +71,15 @@ function LayerShapes({ info, layer }: { info: MatchInfo; layer: Layer }) {
 
 export default function Pitch({ info, layers, arrows = [], points = [] }: Props) {
   return (
-    <svg className="pitch" viewBox={`0 0 ${LENGTH} ${WIDTH}`} role="img" aria-label="Tactical pitch">
+    <svg className="pitch" viewBox={`0 0 ${LENGTH} ${WIDTH}`} preserveAspectRatio="xMidYMid meet" role="img" aria-label="Tactical pitch">
       <defs>
         <marker id="arrow" markerWidth="4" markerHeight="4" refX="3" refY="2" orient="auto">
           <path d="M0,0 L4,2 L0,4 z" className="arrow-head" />
         </marker>
+        {/* heatmaps are smoothed only when drawn: the cells and their numbers stay exactly the same */}
+        <filter id="heat-smooth" x="-5%" y="-5%" width="110%" height="110%">
+          <feGaussianBlur stdDeviation="1.2" />
+        </filter>
       </defs>
       <Markings />
       {layers.map((layer, i) => <LayerShapes key={i} info={info} layer={layer} />)}

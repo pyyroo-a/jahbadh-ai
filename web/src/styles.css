@@ -42,7 +42,7 @@ body { margin: 0; min-height: 100vh; background: var(--bg); }
 
 .columns {
   flex: 1; display: grid; gap: 12px; padding: 12px;
-  grid-template-columns: minmax(220px, 1fr) 2fr minmax(320px, 1.2fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr);   /* both sides the same width */
 }
 .column { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; min-width: 0; }
 .column h2 { margin: 0 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
@@ -129,7 +129,7 @@ body { margin: 0; min-height: 100vh; background: var(--bg); }
 
 /* Tactical view */
 .tactical { overflow-y: auto; }
-.pitch { width: 100%; height: auto; margin-top: 4px; background: var(--pitch); border-radius: 8px; }
+.pitch { display: block; width: 100%; height: auto; aspect-ratio: 105 / 68; margin-top: 4px; background: var(--pitch); border-radius: 8px; }
 .markings { fill: none; stroke: var(--line); stroke-width: 0.35; }
 .markings .spot { fill: var(--line); }
 .dot-label { font-size: 1.8px; font-weight: 700; fill: var(--text); text-anchor: middle; pointer-events: none; }
@@ -198,3 +198,34 @@ body { margin: 0; min-height: 100vh; background: var(--bg); }
 }
 .lower-third-minute { color: var(--amber); font-variant-numeric: tabular-nums; }
 .lower-third-tag { margin-left: auto; font-size: 11px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+
+/* Persona layouts and phones */
+.score .short { display: none; }
+.phone-stack { display: flex; flex-direction: column; gap: 10px; padding: 10px 12px; }
+.tactical-card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.tactical-card summary { display: flex; flex-direction: column; gap: 2px; cursor: pointer; list-style: none; }
+.tactical-card summary::-webkit-details-marker { display: none; }
+.tactical-card[open] summary { margin-bottom: 8px; }
+.tactical-card .column { border: 0; padding: 0; max-height: none; background: transparent; }
+.happening { max-height: none; }
+.happening-event {
+  display: flex; gap: 8px; margin: 4px 0; padding: 3px 0 3px 10px; border-left: 2px solid var(--line);
+  color: var(--muted); font-size: 13px;
+}
+
+@media (max-width: 767px) {
+  .topbar { flex-wrap: wrap; gap: 6px 12px; padding: 8px 12px; }
+  .brand span { display: none; }
+  .brand img { width: 26px; height: 26px; }
+  .score { font-size: 17px; gap: 8px; }
+  .score .long { display: none; }
+  .score .short { display: inline; }
+  .switches { width: 100%; justify-content: space-between; gap: 6px; }
+  .pill { font-size: 12px; padding: 2px 8px; }
+  .controlbar, .modebar, .highlights { padding: 6px 12px; }
+  .modebar { flex-wrap: wrap; }
+  .columns { padding: 8px; gap: 8px; }
+  .column { max-height: none; }
+  .tiles { grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); }
+  .lower-third { max-width: 100%; padding: 4px 8px; font-size: 12px; }
+}

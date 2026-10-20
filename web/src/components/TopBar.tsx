@@ -27,12 +27,12 @@ export default function TopBar({ info, state, minute, persona, language, onPerso
   const score = (id: string) => state?.score[id] ?? 0;
   return (
     <header className="topbar">
-      <div className="brand"><img src="/jahbadh-icon.png" alt="" />Jahbadh</div>
+      <div className="brand"><img src="/jahbadh-icon.png" alt="" /><span>Jahbadh</span></div>
       {info && (
         <div className="score">
-          <span className="home">{info.home.name}</span>
+          <span className="home"><span className="long">{info.home.name}</span><span className="short">{info.home.id}</span></span>
           <strong>{score(info.home.id)} - {score(info.away.id)}</strong>
-          <span className="away">{info.away.name}</span>
+          <span className="away"><span className="long">{info.away.name}</span><span className="short">{info.away.id}</span></span>
           <span className="minute">{minute}'</span>
         </div>
       )}

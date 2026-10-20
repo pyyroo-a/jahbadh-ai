@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { FeedItem, Language, MetricChoice, Persona } from "../api/types";
 import { type DeskState, rejectionsFor } from "../state/desk";
+import { SPEED_NOTE } from "../state/labels";
 import type { Selection } from "../state/evidence";
 import { type Mode, rankClaims, recapOrder } from "../state/personal";
 import ClaimCard from "./ClaimCard";
@@ -16,6 +17,7 @@ type Props = {
   notice: string | null;
   mode: Mode;
   choices: MetricChoice[];
+  calm?: boolean;                           // the Fan view: rejected drafts stay folded
 };
 
 function badge(mode: Mode, desk: DeskState, choices: MetricChoice[]): string | null {
@@ -28,10 +30,11 @@ function badge(mode: Mode, desk: DeskState, choices: MetricChoice[]): string | n
   }
 }
 
-function Moment({ item, persona, language, selection, onSelect, waiting, desk, mode, choices }: Omit<Props, "notice"> & { item: FeedItem }) {
+export function Moment({ item, persona, language, selection, onSelect, waiting, desk, mode, choices, calm }: Omit<Props, "notice"> & { item: FeedItem }) {
   const [open, setOpen] = useState(false);
   const drafts = rejectionsFor(item, persona, language);
-  const shownDrafts = open ? drafts : drafts.slice(0, 1);
+  const folded = calm ? 0 : 1;
+  const shownDrafts = open ? drafts : drafts.slice(0, folded);
   const ranked = desk.info ? rankClaims(item, mode, desk.info, desk.eventsById, choices)
     : item.claims.map((claim) => ({ claim, focus: false }));
   const label = badge(mode, desk, choices);
@@ -48,9 +51,10 @@ function Moment({ item, persona, language, selection, onSelect, waiting, desk, m
         );
       })}
       {shownDrafts.map((r, i) => <RejectedDraft key={`${r.claim_id}-${r.layer}-${r.attempt}-${i}`} item={item} rejection={r} />)}
-      {drafts.length > 1 && (
+      {drafts.length > folded && (
         <button className="link" onClick={() => setOpen(!open)}>
-          {open ? "Hide the other rejected drafts" : `Show ${drafts.length - 1} more rejected ${drafts.length === 2 ? "draft" : "drafts"}`}
+          {open ? (calm ? "Hide the rejected drafts" : "Hide the other rejected drafts")
+            : `Show ${drafts.length - folded} ${calm ? "" : "more "}rejected ${drafts.length - folded === 1 ? "draft" : "drafts"}`}
         </button>
       )}
     </article>
@@ -65,6 +69,7 @@ export default function DeskFeed(props: Props) {
   return (
     <section className="column feed">
       <h2>Desk feed</h2>
+      {desk.info && desk.info.mode !== "replay" && <div className="note">{SPEED_NOTE}</div>}
       {notice && <div className="note">{notice}</div>}
       {desk.thinking.map((m) => <div key={m.id} className="thinking">The desk is thinking about {m.label}...</div>)}
       {newestFirst.map((item) => <Moment key={item.moment.id} {...props} item={item} />)}

@@ -19,6 +19,7 @@ type Props = {
   overlayControls?: ReactNode;     // the broadcast overlay switch
   onPitch?: ReactNode;             // drawn over the pitch: the overlay's lower-thirds
   onOverview?: () => void;         // leaves a claim's evidence for the formations
+  calm?: boolean;                  // the Fan view: tiles only for a selected line's evidence
 };
 
 const ppda = (v: number | null | undefined) => (typeof v === "number" ? v.toFixed(1) : "no data");
@@ -33,7 +34,7 @@ function overviewTiles(info: MatchInfo, state: MatchState | null, mode: Mode): T
   return [...tiles, { key: "xg", value: xg, label: "xG", sub: `${info.home.id} - ${info.away.id}, so far` }];
 }
 
-export default function TacticalView({ info, state, selected, eventsById, mode, heatmap, children, overlayControls, onPitch, onOverview }: Props) {
+export default function TacticalView({ info, state, selected, eventsById, mode, heatmap, children, overlayControls, onPitch, onOverview, calm }: Props) {
   let layers: Layer[];
   let tiles: Tile[];
   let title = "Tactical view";
@@ -48,7 +49,7 @@ export default function TacticalView({ info, state, selected, eventsById, mode, 
   } else {
     layers = Object.values(state?.shape ?? {}).map((m) => metricLayer(m, info));
     if (heatmap) layers = [metricLayer(heatmap, info), ...layers];
-    tiles = overviewTiles(info, state, mode);
+    tiles = calm ? [] : overviewTiles(info, state, mode);
   }
   return (
     <section className="column tactical">

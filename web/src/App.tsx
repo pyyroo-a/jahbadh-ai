@@ -3,10 +3,11 @@ import { ApiError, addCombo, getConfig, liveUrl, replayUrl, skipLive, spotlight,
 import { openStream } from "./api/stream";
 import type { DeskConfig, FeedItem, Language, Persona, PlayerFollow } from "./api/types";
 import ControlBar, { type Source } from "./components/ControlBar";
-import DeskFeed from "./components/DeskFeed";
+import DeskFeed, { Moment } from "./components/DeskFeed";
 import EventStream from "./components/EventStream";
 import FollowPanel from "./components/FollowPanel";
 import HighlightsStrip from "./components/HighlightsStrip";
+import FanLayout from "./components/layouts/FanLayout";
 import MetricFocus from "./components/MetricFocus";
 import ModeBar from "./components/ModeBar";
 import OverlayPreview, { LowerThirds } from "./components/OverlayPreview";
@@ -17,8 +18,10 @@ import { comboWaiting, initialDesk, reduce, replaySkip } from "./state/desk";
 import type { Selection } from "./state/evidence";
 import { highlights } from "./state/highlights";
 import { COMBO_NOTICES } from "./state/labels";
+import { layoutFor } from "./state/layout";
 import { activeCues, tickingClock } from "./state/overlay";
 import { claimTags, inFocus, type Mode } from "./state/personal";
+import { usePhone } from "./state/usePhone";
 
 export default function App() {
   const [desk, dispatch] = useReducer(reduce, initialDesk);
@@ -36,6 +39,7 @@ export default function App() {
   const [liveRemaining, setLiveRemaining] = useState(0);
   const [overlayOn, setOverlayOn] = useState(false);
   const [heardAt, setHeardAt] = useState(0);              // real time of the last stream message
+  const phone = usePhone();
 
   useEffect(() => {
     getConfig()
@@ -147,6 +151,28 @@ export default function App() {
     if (item?.claims[0]) setSelection({ momentId, claimId: item.claims[0].id });
   };
 
+  const layout = layoutFor(persona);
+  const calm = layout === "fan";
+  const feedProps = { desk, persona, language, selection, onSelect: setSelection, waiting, mode, choices, calm };
+  const tacticalView = info ? (
+          <TacticalView info={info} state={state} selected={selected} eventsById={desk.eventsById} mode={mode}
+            heatmap={mode.kind === "player" ? follow?.heatmap ?? null : null}
+            overlayControls={<OverlayPreview on={overlayOn} onToggle={() => setOverlayOn(!overlayOn)}
+              feedUrl={liveRunId ? `/api/live/${liveRunId}/overlay` : `/api/replay/${info.match_id}/overlay`} />}
+            onOverview={() => setSelection(null)} calm={calm}
+            onPitch={overlayOn && <LowerThirds cues={activeCues(desk.cues, onAir)} language={language} info={info} />}>
+            {mode.kind === "player" && (
+              <FollowPanel key={mode.playerId} info={info} playerId={mode.playerId} clock={clock} runId={liveRunId}
+                items={desk.items} persona={persona} language={language} onFollow={setFollow}
+                onSpent={() => getConfig().then((c) => setLiveRemaining(c.live_remaining)).catch(() => undefined)} />
+            )}
+            {choice && (
+              <MetricFocus info={info} choice={choice} states={desk.states} pinned={pinned} persona={persona}
+                language={language} onPick={(momentId, claimId) => setSelection({ momentId, claimId })} />
+            )}
+          </TacticalView>
+        ) : <section className="column"><h2>Tactical view</h2>Waiting for kick-off</section>;
+
   return (
     <div className="desk">
       <TopBar info={info} state={state} minute={minute} persona={persona} language={language}
@@ -162,30 +188,17 @@ export default function App() {
       {info && <ModeBar info={info} choices={choices} mode={mode} onMode={(m) => { setMode(m); setSelection(null); }} />}
       <HighlightsStrip strip={strip} onPick={pickMoment} />
       {problem && !desk.ended && <div className="notice">{problem}</div>}
-      <main className="columns">
-        <EventStream events={events} language={language} highlighted={highlighted}
-          scrollKey={selection ? `${selection.momentId}|${selection.claimId}` : null} />
-        {info ? (
-          <TacticalView info={info} state={state} selected={selected} eventsById={desk.eventsById} mode={mode}
-            heatmap={mode.kind === "player" ? follow?.heatmap ?? null : null}
-            overlayControls={<OverlayPreview on={overlayOn} onToggle={() => setOverlayOn(!overlayOn)}
-              feedUrl={liveRunId ? `/api/live/${liveRunId}/overlay` : `/api/replay/${info.match_id}/overlay`} />}
-            onOverview={() => setSelection(null)}
-            onPitch={overlayOn && <LowerThirds cues={activeCues(desk.cues, onAir)} language={language} info={info} />}>
-            {mode.kind === "player" && (
-              <FollowPanel key={mode.playerId} info={info} playerId={mode.playerId} clock={clock} runId={liveRunId}
-                items={desk.items} persona={persona} language={language} onFollow={setFollow}
-                onSpent={() => getConfig().then((c) => setLiveRemaining(c.live_remaining)).catch(() => undefined)} />
-            )}
-            {choice && (
-              <MetricFocus info={info} choice={choice} states={desk.states} pinned={pinned} persona={persona}
-                language={language} onPick={(momentId, claimId) => setSelection({ momentId, claimId })} />
-            )}
-          </TacticalView>
-        ) : <section className="column"><h2>Tactical view</h2>Waiting for kick-off</section>}
-        <DeskFeed desk={desk} persona={persona} language={language} selection={selection} onSelect={setSelection}
-          waiting={waiting} notice={notice} mode={mode} choices={choices} />
-      </main>
+      {phone && layout === "fan" ? (
+        <FanLayout desk={desk} language={language} tactical={tacticalView} tacticalOpen={selection !== null}
+          renderItem={(item) => <Moment item={item} {...feedProps} />} />
+      ) : (
+        <main className="columns">
+          <EventStream events={events} language={language} highlighted={highlighted}
+            scrollKey={selection ? `${selection.momentId}|${selection.claimId}` : null} />
+          {tacticalView}
+          <DeskFeed {...feedProps} notice={notice} />
+        </main>
+      )}
     </div>
   );
 }
