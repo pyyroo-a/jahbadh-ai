@@ -150,6 +150,7 @@ export interface MatchState {
   rhythm: Metric | null;
   pass_difficulty: Record<string, number | null>;
   pass_speed: Record<string, number | null>;   // each team's mean synthetic pass speed, km/h
+  shots: Record<string, number>;               // each team's shots so far
 }
 
 export interface RendersUpdate {

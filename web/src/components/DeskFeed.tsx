@@ -18,6 +18,7 @@ type Props = {
   mode: Mode;
   choices: MetricChoice[];
   calm?: boolean;                           // the Fan view: rejected drafts stay folded
+  detail?: boolean;                         // the Analyst view: drafts open, figures and citations on show
 };
 
 function badge(mode: Mode, desk: DeskState, choices: MetricChoice[]): string | null {
@@ -30,10 +31,10 @@ function badge(mode: Mode, desk: DeskState, choices: MetricChoice[]): string | n
   }
 }
 
-export function Moment({ item, persona, language, selection, onSelect, waiting, desk, mode, choices, calm }: Omit<Props, "notice"> & { item: FeedItem }) {
+export function Moment({ item, persona, language, selection, onSelect, waiting, desk, mode, choices, calm, detail }: Omit<Props, "notice"> & { item: FeedItem }) {
   const [open, setOpen] = useState(false);
   const drafts = rejectionsFor(item, persona, language);
-  const folded = calm ? 0 : 1;
+  const folded = calm ? 0 : detail ? drafts.length : 1;
   const shownDrafts = open ? drafts : drafts.slice(0, folded);
   const ranked = desk.info ? rankClaims(item, mode, desk.info, desk.eventsById, choices)
     : item.claims.map((claim) => ({ claim, focus: false }));
@@ -46,7 +47,7 @@ export function Moment({ item, persona, language, selection, onSelect, waiting, 
         const selected = selection?.momentId === item.moment.id && selection.claimId === c.id;
         return (
           <ClaimCard key={c.id} item={item} claim={c} persona={persona} language={language} selected={selected}
-            focus={focus ? label : null} dimmed={mode.kind !== "all" && !focus} eventsById={desk.eventsById} info={desk.info}
+            focus={focus ? label : null} dimmed={mode.kind !== "all" && !focus} eventsById={desk.eventsById} info={desk.info} detail={detail}
             onSelect={() => onSelect(selected ? null : { momentId: item.moment.id, claimId: c.id })} />
         );
       })}

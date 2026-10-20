@@ -34,7 +34,7 @@ def match_state(match: Match, t: float) -> MatchState:
         return MatchState(t=0.0, minute=1, score={team: 0 for team in teams}, xg={team: 0.0 for team in teams},
                           momentum=None, field_tilt=None, ppda={team: None for team in teams}, shape={},
                           formations=formations, rhythm=None, pass_difficulty={team: None for team in teams},
-                          pass_speed={team: None for team in teams})
+                          pass_speed={team: None for team in teams}, shots={team: 0 for team in teams})
     start = max(0.0, t - STATE_WINDOW_S)
     return MatchState(
         t=float(t), minute=_minute(t), score=score_at(match, t),
@@ -45,7 +45,8 @@ def match_state(match: Match, t: float) -> MatchState:
         shape={team: an.average_positions(match, team, start, t) for team in teams},
         formations=formations, rhythm=an.game_rhythm(match, start, t),
         pass_difficulty={team: an.pass_quality(match, team, start, t).value for team in teams},
-        pass_speed={team: an.pass_speed(match, team, start, t).value for team in teams})
+        pass_speed={team: an.pass_speed(match, team, start, t).value for team in teams},
+        shots={team: int(an.match_stats(match, team, 0, t).data["shots"]) for team in teams})
 
 
 def event_line(match: Match, e: Event) -> EventLine:

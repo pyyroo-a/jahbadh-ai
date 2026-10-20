@@ -73,7 +73,7 @@ def test_event_line_payload_keys_are_the_protocol():
 
 def test_match_state_payload_keys_are_the_protocol():
     assert set(MatchState.model_fields) == {"t", "minute", "score", "xg", "momentum", "field_tilt", "ppda", "shape",
-                                            "formations", "rhythm", "pass_difficulty", "pass_speed"}
+                                            "formations", "rhythm", "pass_difficulty", "pass_speed", "shots"}
 
 
 def test_cues_ride_in_the_timeline_at_their_time():
@@ -114,3 +114,12 @@ def test_event_lines_and_states_carry_pass_speed():
     s = match_state(m, 3600)
     assert set(s.pass_speed) == {"NBR", "RMU"} and all(20 <= v <= 100 for v in s.pass_speed.values())
     assert match_state(m, 0).pass_speed == {"NBR": None, "RMU": None}
+
+
+def test_states_count_shots_per_team():
+    from jahbadh.analytics import match_stats
+    m = demo_match()
+    full = match_state(m, 5400)
+    assert full.shots == {t: match_stats(m, t).data["shots"] for t in ("NBR", "RMU")}
+    assert match_state(m, 600).shots == {t: match_stats(m, t, 0, 600).data["shots"] for t in ("NBR", "RMU")}
+    assert match_state(m, 0).shots == {"NBR": 0, "RMU": 0}

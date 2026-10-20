@@ -7,6 +7,7 @@ import DeskFeed, { Moment } from "./components/DeskFeed";
 import EventStream from "./components/EventStream";
 import FollowPanel from "./components/FollowPanel";
 import HighlightsStrip from "./components/HighlightsStrip";
+import AnalystLayout from "./components/layouts/AnalystLayout";
 import FanLayout from "./components/layouts/FanLayout";
 import MetricFocus from "./components/MetricFocus";
 import ModeBar from "./components/ModeBar";
@@ -152,8 +153,8 @@ export default function App() {
   };
 
   const layout = layoutFor(persona);
-  const calm = layout === "fan";
-  const feedProps = { desk, persona, language, selection, onSelect: setSelection, waiting, mode, choices, calm };
+  const calm = layout === "fan", detail = layout === "analyst";
+  const feedProps = { desk, persona, language, selection, onSelect: setSelection, waiting, mode, choices, calm, detail };
   const tacticalView = info ? (
           <TacticalView info={info} state={state} selected={selected} eventsById={desk.eventsById} mode={mode}
             heatmap={mode.kind === "player" ? follow?.heatmap ?? null : null}
@@ -191,6 +192,9 @@ export default function App() {
       {phone && layout === "fan" ? (
         <FanLayout desk={desk} language={language} tactical={tacticalView} tacticalOpen={selection !== null}
           renderItem={(item) => <Moment item={item} {...feedProps} />} />
+      ) : layout === "analyst" && info ? (
+        <AnalystLayout desk={desk} info={info} phone={phone} tactical={tacticalView} tacticalOpen={selection !== null}
+          feed={<DeskFeed {...feedProps} notice={notice} />} />
       ) : (
         <main className="columns">
           <EventStream events={events} language={language} highlighted={highlighted}

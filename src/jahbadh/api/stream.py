@@ -60,6 +60,7 @@ class MatchState(BaseModel):
     rhythm: Metric | None             # game_rhythm, controlled to chaotic
     pass_difficulty: dict[str, float | None]   # each team's mean pass difficulty
     pass_speed: dict[str, float | None]        # each team's mean synthetic pass speed, km/h
+    shots: dict[str, int]                      # each team's shots so far
 
 
 class RendersUpdate(BaseModel):
