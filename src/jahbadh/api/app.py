@@ -9,6 +9,7 @@ from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from typing import Annotated
 
+import httpx2
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.sse import EventSourceResponse, ServerSentEvent
 from fastapi.staticfiles import StaticFiles
@@ -58,6 +59,8 @@ def create_app(settings: ApiSettings | None = None, desk_factory: DeskFactory | 
         app.state.timelines = {mid: replay_timeline(s) for mid, s in app.state.showcases.items()}
         app.state.cue_timelines = {mid: _cue_timeline(items) for mid, items in app.state.timelines.items()}
         yield
+        if app.state.feeder is not None:
+            app.state.feeder.cancel()
         for run in (app.state.live, app.state.ingest):   # stopping the server never leaves model calls running
             if run is not None:
                 await run.cancel()
@@ -66,7 +69,8 @@ def create_app(settings: ApiSettings | None = None, desk_factory: DeskFactory | 
     app.state.settings, app.state.desk_factory, app.state.sleep, app.state.now = settings, desk_factory, sleep, now
     app.state.limit = DailyLimit(settings.state_dir / "live.json", settings.live_per_day)
     app.state.live, app.state.live_lock = None, asyncio.Lock()
-    app.state.ingest = None
+    app.state.ingest, app.state.feeder, app.state.feed_speed = None, None, 6.0
+    app.state.feeder_client = lambda: httpx2.AsyncClient(base_url=settings.self_url, timeout=30)
 
     @app.get("/api/health")
     def health() -> dict:

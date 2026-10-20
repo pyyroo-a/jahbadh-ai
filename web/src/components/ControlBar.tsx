@@ -1,21 +1,25 @@
 import { useState } from "react";
 import type { MatchInfo } from "../api/types";
+import { INGEST_LABELS } from "../state/labels";
 
 export type Source =
   | { kind: "replay"; matchId: string; speed: number; fromT: number; seen: number }   // seen: last moment skipped to
-  | { kind: "live"; runId: string };
+  | { kind: "live"; runId: string }
+  | { kind: "ingest"; runId: string };
 
 type Props = {
   source: Source;
   info: MatchInfo | null;
   liveMode: boolean;               // the server has live mode switched on
   liveRemaining: number;
+  ingestOn: boolean;               // the server takes outside events, so the demo feed can run
   nextMoment: number | null;       // replay: the next moment's time after the clock
   thinking: number;                // moments the desk is working on now
   notice: string | null;           // the last live answer, e.g. the daily-limit line
   onSpeed: (speed: number) => void;
   onSkip: () => void;
   onRunLive: () => void;
+  onWatchFeed: () => void;
   onSpotlight: (playerId: string) => void;
   onBackToReplay: () => void;
   children?: React.ReactNode;      // the recap button
@@ -28,7 +32,8 @@ export default function ControlBar(p: Props) {
   const live = p.source.kind === "live";
   return (
     <div className="controlbar">
-      <span className="badge">{live ? "Live · the agents are working now" : "Replay · precomputed by the real desk"}</span>
+      <span className="badge">{live ? "Live · the agents are working now"
+        : p.source.kind === "ingest" ? INGEST_LABELS.badge : "Replay · precomputed by the real desk"}</span>
       {p.source.kind === "replay" && (
         <>
           <div className="pills" role="group" aria-label="Speed">
@@ -44,6 +49,7 @@ export default function ControlBar(p: Props) {
               <span className="muted">{p.liveRemaining} live {p.liveRemaining === 1 ? "run" : "runs"} left today</span>
             </>
           )}
+          {p.ingestOn && <button className="pill accent" onClick={p.onWatchFeed}>{INGEST_LABELS.button}</button>}
         </>
       )}
       {live && (
@@ -64,6 +70,12 @@ export default function ControlBar(p: Props) {
               <button className="pill" disabled={!player} onClick={() => p.onSpotlight(player)}>Spotlight a player</button>
             </>
           )}
+          <button className="pill" onClick={p.onBackToReplay}>Back to the replay</button>
+        </>
+      )}
+      {p.source.kind === "ingest" && (
+        <>
+          <span className="muted">{INGEST_LABELS.note}</span>
           <button className="pill" onClick={p.onBackToReplay}>Back to the replay</button>
         </>
       )}

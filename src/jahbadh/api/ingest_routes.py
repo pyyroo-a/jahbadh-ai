@@ -5,6 +5,8 @@ the stream, the players and a follow is open, like replay and live. Only one liv
 """
 
 import asyncio
+import logging
+import random
 import secrets
 from collections.abc import AsyncIterator
 from typing import Annotated
@@ -13,10 +15,14 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from fastapi.sse import EventSourceResponse, ServerSentEvent
 
 from jahbadh.agents.config import MissingSetting
+from jahbadh.api.feeder import pump, start_feed
 from jahbadh.api.ingest import IngestBatch, IngestError, IngestRun, IngestStart, empty_match
 from jahbadh.api.live_routes import default_desk_factory
 from jahbadh.api.personal import PlayerFollow, PlayerRow, player_follow, player_table
 from jahbadh.api.replay import to_sse
+from jahbadh.simulator import simulate_match
+
+log = logging.getLogger(__name__)
 
 OFF = "Ingest is switched off on this server."
 WRONG_TOKEN = "That ingest token isn't right."
@@ -72,6 +78,38 @@ async def start_ingest(request: Request, body: IngestStart) -> dict:
         run.start()
         state.ingest = run
         return {"run_id": run_id, "agents": run.agents, "remaining": state.limit.remaining()}
+
+
+@router.post("/demo")
+async def demo_feed(request: Request) -> dict:
+    """The "Watch an outside feed" button: our demo feeder plays a fresh simulated match into the ingest API over
+    HTTP, exactly like an outside system would. If a feed is already playing, you join it."""
+    state = request.app.state
+    token = _on(request)
+    if state.live is not None and not state.live.done:
+        raise HTTPException(409, LIVE_BUSY)
+    if (running := active_ingest(state)) is not None:
+        return {"run_id": running.run_id, "joined": True}
+    match = await asyncio.to_thread(simulate_match, random.randint(100, 9999))
+    client = state.feeder_client()
+    try:
+        run_id = await start_feed(client, token, match)
+    except Exception:
+        await client.aclose()
+        if (running := active_ingest(state)) is not None:     # another click started one meanwhile
+            return {"run_id": running.run_id, "joined": True}
+        raise HTTPException(503, "The demo feed couldn't start just now.") from None
+
+    async def play() -> None:
+        try:                                      # the client is already open (start_feed used it), so no "async with"
+            await pump(client, token, run_id, match, state.feed_speed, state.sleep)
+        except Exception:
+            log.exception("the demo feed %s stopped", run_id)
+        finally:
+            await client.aclose()
+
+    state.feeder = asyncio.create_task(play())
+    return {"run_id": run_id, "joined": False}
 
 
 @router.post("/{run_id}/events", dependencies=[Depends(_writer)])

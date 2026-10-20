@@ -20,10 +20,11 @@ dependencies = [
     "python-dotenv>=1.2",
     "fastapi>=0.143,<1",
     "uvicorn>=0.54,<1",
+    "httpx2>=2.13,<3",             # the demo feeder posts to the ingest API
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "httpx2>=2.13"]
+dev = ["pytest>=8"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

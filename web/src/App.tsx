@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useReducer, useState } from "react";
-import { ApiError, addCombo, getConfig, liveUrl, replayUrl, skipLive, spotlight, startLive } from "./api/client";
+import { ApiError, addCombo, demoFeed, getConfig, ingestUrl, liveUrl, replayUrl, skipLive, spotlight, startLive } from "./api/client";
 import { openStream } from "./api/stream";
 import type { DeskConfig, FeedItem, Language, Persona, PlayerFollow } from "./api/types";
 import ControlBar, { type Source } from "./components/ControlBar";
@@ -58,15 +58,18 @@ export default function App() {
 
   useEffect(() => {               // one stream at a time; a new source starts over from its match message
     if (!source) return;
-    const url = source.kind === "replay" ? replayUrl(source.matchId, source.speed, source.fromT) : liveUrl(source.runId);
+    const url = source.kind === "replay" ? replayUrl(source.matchId, source.speed, source.fromT)
+      : source.kind === "ingest" ? ingestUrl(source.runId) : liveUrl(source.runId);
     return openStream(url, (m) => { setProblem(null); setHeardAt(performance.now()); dispatch(m); },
       () => setProblem("Reconnecting to the desk..."),
-      () => setProblem(source.kind === "live"
+      () => setProblem(source.kind !== "replay"
         ? "This live match is no longer running. Back to the replay is one click away."
         : "The replay stream has stopped. Reload the page to start it again."));
   }, [source]);
 
   const liveRunId = source?.kind === "live" ? source.runId : null;
+  const runId = source && source.kind !== "replay" ? source.runId : null;      // live or ingest
+  const runKind = source?.kind === "ingest" ? "ingest" : "live";
   const { info, state, events } = desk;
   const clock = desk.clock;
 
@@ -122,6 +125,10 @@ export default function App() {
       .then(() => setLiveNotice("The desk is on it. The spotlight lands in the feed shortly."))
       .then(() => getConfig().then((c) => setLiveRemaining(c.live_remaining)))
       .catch(say),
+    onWatchFeed: () => demoFeed().then((r) => {
+      setLiveNotice(r.joined ? "You've joined the outside feed that's already playing." : null);
+      switchTo({ kind: "ingest", runId: r.run_id });
+    }).catch(say),
     onBackToReplay: () => {
       const show = config?.showcases[0];
       if (show) switchTo({ kind: "replay", matchId: show.match_id, speed: 6, fromT: 0, seen: 0 });
@@ -161,11 +168,11 @@ export default function App() {
           <TacticalView info={info} state={state} selected={selected} eventsById={desk.eventsById} mode={mode}
             heatmap={mode.kind === "player" ? follow?.heatmap ?? null : null}
             overlayControls={<OverlayPreview on={overlayOn} onToggle={() => setOverlayOn(!overlayOn)}
-              feedUrl={liveRunId ? `/api/live/${liveRunId}/overlay` : `/api/replay/${info.match_id}/overlay`} />}
+              feedUrl={liveRunId ? `/api/live/${liveRunId}/overlay` : source?.kind === "ingest" ? null : `/api/replay/${info.match_id}/overlay`} />}
             onOverview={() => setSelection(null)} calm={calm}
             onPitch={overlayOn && <LowerThirds cues={activeCues(desk.cues, onAir)} language={language} info={info} />}>
             {mode.kind === "player" && (
-              <FollowPanel key={mode.playerId} info={info} playerId={mode.playerId} clock={clock} runId={liveRunId}
+              <FollowPanel key={mode.playerId} info={info} playerId={mode.playerId} clock={clock} runId={runId} runKind={runKind}
                 items={desk.items} persona={persona} language={language} onFollow={setFollow}
                 onSpent={() => getConfig().then((c) => setLiveRemaining(c.live_remaining)).catch(() => undefined)} />
             )}
@@ -182,6 +189,7 @@ export default function App() {
         onPersona={(p) => pick(p, language)} onLanguage={(l) => pick(persona, l)} />
       {source && (
         <ControlBar source={source} info={info} liveMode={config?.live_mode ?? false} liveRemaining={liveRemaining}
+          ingestOn={config?.ingest?.on ?? false}
           nextMoment={info && source.kind === "replay" ? replaySkip(info, clock, source.seen)?.seen ?? null : null} thinking={desk.thinking.length} notice={liveNotice}
           {...controls}>
           <RecapPanel items={desk.items} mode={mode} persona={persona} language={language}
@@ -198,7 +206,7 @@ export default function App() {
         <AnalystLayout desk={desk} info={info} phone={phone} tactical={tacticalView} tacticalOpen={selection !== null}
           feed={<DeskFeed {...feedProps} notice={notice} />} />
       ) : layout === "watch" && info ? (
-        <PlayerWatchLayout desk={desk} info={info} phone={phone} clock={clock} runId={liveRunId}
+        <PlayerWatchLayout desk={desk} info={info} phone={phone} clock={clock} runId={runId} runKind={runKind}
           followed={mode.kind === "player" ? mode.playerId : null}
           onFollow={(playerId) => { setMode({ kind: "player", playerId }); setSelection(null); }}
           tactical={tacticalView}

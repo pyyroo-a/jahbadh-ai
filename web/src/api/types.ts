@@ -239,6 +239,7 @@ export interface DeskConfig {
   live_remaining: number;
   showcases: ShowcaseSummary[];
   metric_choices: MetricChoice[];
+  ingest: { on: boolean; run_id: string | null };
 }
 
 export type StreamMessage = { id: number } & (

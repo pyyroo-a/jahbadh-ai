@@ -46,11 +46,18 @@ export const replayUrl = (matchId: string, speed: number, fromT = 0) =>
 
 export const liveUrl = (runId: string) => `/api/live/${runId}/stream`;
 
+export type RunKind = "live" | "ingest";
+
+export const ingestUrl = (runId: string) => `/api/ingest/${runId}/stream`;
+
+/** The "Watch an outside feed" button: the demo feeder plays a match into the ingest API. */
+export const demoFeed = () => post<{ run_id: string; joined: boolean }>("/api/ingest/demo");
+
 /** One player up to t: from the showcase in replay, or clamped to the clock in live mode. */
-export const getFollow = (matchId: string, playerId: string, t: number, runId: string | null = null) =>
+export const getFollow = (matchId: string, playerId: string, t: number, runId: string | null = null, kind: RunKind = "live") =>
   call<PlayerFollow>(runId
-    ? `/api/live/${runId}/follow/${playerId}?t=${t}`
+    ? `/api/${kind}/${runId}/follow/${playerId}?t=${t}`
     : `/api/replay/${matchId}/follow/${playerId}?t=${t}`);
 
-export const getPlayers = (matchId: string, t: number, runId: string | null = null) =>
-  call<PlayerRow[]>(runId ? `/api/live/${runId}/players?t=${t}` : `/api/replay/${matchId}/players?t=${t}`);
+export const getPlayers = (matchId: string, t: number, runId: string | null = null, kind: RunKind = "live") =>
+  call<PlayerRow[]>(runId ? `/api/${kind}/${runId}/players?t=${t}` : `/api/replay/${matchId}/players?t=${t}`);

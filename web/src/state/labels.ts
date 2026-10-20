@@ -43,3 +43,9 @@ export const WATCH_LABELS = {
   table: "Player watch · sort by any column · click a player to follow",
   feed: "Desk lines about your players first",
 };
+
+export const INGEST_LABELS = {
+  button: "Watch an outside feed",
+  badge: "Ingest · events from an outside feed",
+  note: "These events come from our demo feeder, sent through the same ingest API an outside system would use.",
+};

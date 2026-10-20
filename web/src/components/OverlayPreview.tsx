@@ -1,13 +1,13 @@
 import type { Language, MatchInfo, OverlayCue } from "../api/types";
 
-type ToggleProps = { on: boolean; onToggle: () => void; feedUrl: string };
+type ToggleProps = { on: boolean; onToggle: () => void; feedUrl: string | null };
 
 /** The switch for the preview, plus the raw feed a graphics system would read. */
 export default function OverlayPreview({ on, onToggle, feedUrl }: ToggleProps) {
   return (
     <div className="overlay-controls">
       <button className={on ? "pill on" : "pill"} aria-pressed={on} onClick={onToggle}>Broadcast overlay preview</button>
-      <a className="link" href={feedUrl} target="_blank" rel="noreferrer">Overlay feed (JSON)</a>
+      {feedUrl && <a className="link" href={feedUrl} target="_blank" rel="noreferrer">Overlay feed (JSON)</a>}
     </div>
   );
 }

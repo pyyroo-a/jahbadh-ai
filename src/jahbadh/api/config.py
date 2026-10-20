@@ -13,6 +13,7 @@ API_ENV_VARS: dict[str, str] = {
     "showcase_dir": "JAHBADH_SHOWCASE_DIR",
     "web_dist": "JAHBADH_WEB_DIST",
     "ingest_token": "JAHBADH_INGEST_TOKEN",
+    "self_url": "JAHBADH_SELF_URL",
 }
 TRUE_WORDS = {"on", "1", "true"}
 
@@ -24,6 +25,7 @@ class ApiSettings(BaseModel):
     showcase_dir: Path = Path("data/showcase")
     web_dist: Path = Path("web/dist")
     ingest_token: str | None = None       # ingest is off unless set; every write must carry it
+    self_url: str = "http://127.0.0.1:8000"   # where the demo feeder reaches this server's ingest API
 
 
 def load_api_settings(env_file: Path | None = Path(".env")) -> ApiSettings:

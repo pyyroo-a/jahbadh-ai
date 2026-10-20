@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ApiError, getFollow, spotlight } from "../api/client";
+import { ApiError, getFollow, spotlight, type RunKind } from "../api/client";
 import type { FeedItem, Language, MatchInfo, Persona, PlayerFollow } from "../api/types";
 import { claimText } from "../state/desk";
 
@@ -8,6 +8,7 @@ type Props = {
   playerId: string;
   clock: number;
   runId: string | null;
+  runKind?: RunKind;
   items: FeedItem[];
   persona: Persona;
   language: Language;
@@ -18,7 +19,7 @@ type Props = {
 const num = (v: unknown, digits: number, unit = "") =>
   typeof v === "number" ? `${v.toFixed(digits)}${unit}` : "no data";
 
-export default function FollowPanel({ info, playerId, clock, runId, items, persona, language, onFollow, onSpent }: Props) {
+export default function FollowPanel({ info, playerId, clock, runId, items, persona, language, onFollow, onSpent, runKind = "live" }: Props) {
   const [follow, setFollow] = useState<PlayerFollow | null>(null);
   const [asked, setAsked] = useState<string | null>(null);
   const asOf = Math.min(5400, Math.floor(clock / 60) * 60);      // the start of the current match minute
@@ -26,11 +27,11 @@ export default function FollowPanel({ info, playerId, clock, runId, items, perso
 
   useEffect(() => {          // once per match minute: the numbers only change that often on screen
     let gone = false;
-    getFollow(info.match_id, playerId, asOf, runId)
+    getFollow(info.match_id, playerId, asOf, runId, runKind)
       .then((f) => { if (!gone) { setFollow(f); onFollow(f); } })
       .catch(() => { if (!gone) { setFollow(null); onFollow(null); } });
     return () => { gone = true; };
-  }, [info.match_id, playerId, runId, asOf, onFollow]);
+  }, [info.match_id, playerId, runId, runKind, asOf, onFollow]);
 
   useEffect(() => () => onFollow(null), [onFollow]);
 
