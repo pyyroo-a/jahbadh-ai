@@ -22,6 +22,7 @@ from jahbadh.agents.moments import detect_moments
 from jahbadh.agents.pipeline import run_desk, workflow_mermaid
 from jahbadh.agents.spotlight import spotlight_moments, team_recap_moments
 from jahbadh.simulator.io import load_match
+from jahbadh.telemetry import setup_tracing
 
 
 def _choices(raw: str, allowed: tuple[str, ...], what: str) -> tuple[str, ...]:
@@ -60,6 +61,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     settings = load_settings()
+    setup_tracing()
     try:
         client = make_chat_client(settings)
         translator = AzureTranslator(settings) if any(lang != "en" for lang in languages) else None

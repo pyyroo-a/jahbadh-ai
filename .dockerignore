@@ -1,0 +1,10 @@
+.venv
+**/node_modules
+data/generated
+data/state
+data/eval/pilot
+.superpowers
+.env
+.git
+tests
+web/dist

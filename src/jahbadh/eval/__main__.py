@@ -24,6 +24,7 @@ from jahbadh.eval.harness import TokenMeter, recheck_showcase, run_eval
 from jahbadh.eval.plant import schedule_plants
 from jahbadh.eval.report import catch_summary, to_markdown
 from jahbadh.simulator import simulate_match
+from jahbadh.telemetry import setup_tracing
 
 SHOWCASE_ROOT = Path("data/showcase")
 
@@ -69,10 +70,12 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         settings = load_settings()
-        settings.require("foundry_api_key")
+        if not settings.uses_identity:
+            settings.require("foundry_api_key")
     except MissingSetting as e:
         print(e, file=sys.stderr)
         return 2
+    setup_tracing()
     meter = TokenMeter()
 
     def desk_for(match, planter):

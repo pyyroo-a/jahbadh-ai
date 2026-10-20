@@ -21,6 +21,8 @@ dependencies = [
     "fastapi>=0.143,<1",
     "uvicorn>=0.54,<1",
     "httpx2>=2.13,<3",             # the demo feeder posts to the ingest API
+    "azure-identity>=1.26,<2",     # keyless sign-in to Foundry and Translator in the cloud
+    "azure-monitor-opentelemetry>=1.8,<2",   # agent traces into Application Insights and Foundry
 ]
 
 [project.optional-dependencies]

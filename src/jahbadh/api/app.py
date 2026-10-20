@@ -26,6 +26,7 @@ from jahbadh.api.showcase import Showcase, load_showcases
 from jahbadh.api.stream import MatchInfo, StreamItem
 from jahbadh.api.timeline import replay_timeline
 from jahbadh.schemas import Match
+from jahbadh.telemetry import setup_tracing
 
 DeskFactory = Callable[[Match], Desk]
 
@@ -52,6 +53,7 @@ def _cue_timeline(items: list[StreamItem]) -> list[StreamItem]:
 def create_app(settings: ApiSettings | None = None, desk_factory: DeskFactory | None = None,
                sleep: Sleep = asyncio.sleep, now: Callable[[], float] = time.monotonic) -> FastAPI:
     settings = settings or load_api_settings()
+    tracing = setup_tracing()                      # before the app exists, so its requests are traced too
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -67,6 +69,7 @@ def create_app(settings: ApiSettings | None = None, desk_factory: DeskFactory | 
 
     app = FastAPI(title="Jahbadh desk", lifespan=lifespan)
     app.state.settings, app.state.desk_factory, app.state.sleep, app.state.now = settings, desk_factory, sleep, now
+    app.state.tracing = tracing
     app.state.limit = DailyLimit(settings.state_dir / "live.json", settings.live_per_day)
     app.state.live, app.state.live_lock = None, asyncio.Lock()
     app.state.ingest, app.state.feeder, app.state.feed_speed = None, None, 6.0

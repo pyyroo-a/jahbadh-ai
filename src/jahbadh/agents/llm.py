@@ -10,6 +10,7 @@ from typing import Literal, TypeVar
 import httpx2
 from agent_framework import Agent
 from agent_framework.openai import OpenAIChatClient
+from azure.identity.aio import DefaultAzureCredential, get_bearer_token_provider
 from openai import AsyncOpenAI
 from pydantic import BaseModel, ValidationError
 
@@ -18,7 +19,8 @@ from jahbadh.agents.config import Settings
 AgentName = Literal["analyst", "tactical", "writer", "referee", "persona", "polish"]
 T = TypeVar("T", bound=BaseModel)
 
-RETRY_NOTE = "\n\nYour last reply did not match the required JSON schema. Reply again with valid JSON only."
+AI_SCOPE = "https://ai.azure.com/.default"     # needs "Cognitive Services OpenAI User" on the Foundry resource
+RETRY_NOTE ="\n\nYour last reply did not match the required JSON schema. Reply again with valid JSON only."
 
 
 class AgentOutputError(RuntimeError):
@@ -26,9 +28,14 @@ class AgentOutputError(RuntimeError):
 
 
 def make_chat_client(settings: Settings, http_client: httpx2.AsyncClient | None = None) -> OpenAIChatClient:
-    """Agent Framework's Responses API client pointed at our Foundry deployment."""
-    settings.require("foundry_api_key")
-    openai = AsyncOpenAI(base_url=settings.foundry_base_url, api_key=settings.foundry_api_key.get_secret_value(),
+    """Agent Framework's Responses API client pointed at our Foundry deployment, signed in with the key or, in the
+    cloud, with the app's Azure identity (a fresh token for every request, refreshed before it runs out)."""
+    if settings.uses_identity:
+        api_key = get_bearer_token_provider(DefaultAzureCredential(), AI_SCOPE)
+    else:
+        settings.require("foundry_api_key")
+        api_key = settings.foundry_api_key.get_secret_value()
+    openai = AsyncOpenAI(base_url=settings.foundry_base_url, api_key=api_key,
                          max_retries=5, timeout=90, http_client=http_client)
     return OpenAIChatClient(model=settings.foundry_model, async_client=openai,
                             function_invocation_configuration={"max_iterations": 8, "max_function_calls": 16})

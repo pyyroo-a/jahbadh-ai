@@ -1,12 +1,15 @@
 import asyncio
 import json
+import time
 
 import httpx2
 import pytest
+from azure.core.credentials import AccessToken, AccessTokenInfo, AzureKeyCredential
 from pydantic import BaseModel
 
 from fakes import ScriptedChatClient, ToolCall, responses_api_body
-from jahbadh.agents.config import MissingSetting, Settings
+from jahbadh.agents import llm, localize
+from jahbadh.agents.config import MissingSetting, Settings, load_settings
 from jahbadh.agents.llm import AgentOutputError, ask, make_agent, make_chat_client
 
 
@@ -35,6 +38,75 @@ def test_client_sends_responses_request_to_foundry():
 def test_make_chat_client_requires_key():
     with pytest.raises(MissingSetting, match="FOUNDRY_API_KEY"):
         make_chat_client(Settings())
+
+
+def test_a_key_wins_over_the_identity():
+    assert Settings(azure_identity=True).uses_identity is True
+    assert Settings(azure_identity=True, foundry_api_key="k").uses_identity is False
+    assert Settings().uses_identity is False
+
+
+def test_the_identity_switch_is_read_from_the_environment(tmp_path, monkeypatch):
+    for var in ("FOUNDRY_API_KEY", "JAHBADH_AZURE_IDENTITY", "TRANSLATOR_RESOURCE_ID"):
+        monkeypatch.delenv(var, raising=False)
+    assert load_settings(None).azure_identity is False
+    monkeypatch.setenv("JAHBADH_AZURE_IDENTITY", "on")
+    monkeypatch.setenv("TRANSLATOR_RESOURCE_ID", "/subscriptions/s/resourceGroups/g/providers/x/accounts/t")
+    settings = load_settings(None)
+    assert settings.uses_identity and settings.translator_resource_id.endswith("/accounts/t")
+    monkeypatch.setenv("JAHBADH_AZURE_IDENTITY", "off")
+    assert load_settings(None).azure_identity is False
+
+
+class FakeAsyncCredential:
+    def __init__(self):
+        self.scopes = []
+
+    async def get_token(self, *scopes, **kwargs):
+        self.scopes.append(scopes)
+        return AccessToken("identity-token", int(time.time()) + 3600)
+
+    async def get_token_info(self, *scopes, options=None):
+        self.scopes.append(scopes)
+        return AccessTokenInfo("identity-token", int(time.time()) + 3600)
+
+    async def close(self):
+        pass
+
+
+def test_identity_uses_a_token_provider_for_the_ai_scope(monkeypatch):
+    credential = FakeAsyncCredential()
+    monkeypatch.setattr(llm, "DefaultAzureCredential", lambda: credential)
+    seen = []
+
+    def handler(req):
+        seen.append(req.headers["authorization"])
+        return httpx2.Response(200, json=responses_api_body('{"answer": "hi"}'))
+
+    http = httpx2.AsyncClient(transport=httpx2.MockTransport(handler))
+    client = make_chat_client(Settings(azure_identity=True), http_client=http)
+    out = asyncio.run(ask(make_agent(client, "writer", "be brief"), "go", Out))
+    assert out == Out(answer="hi")
+    assert seen == ["Bearer identity-token"]
+    assert credential.scopes and all(s == ("https://ai.azure.com/.default",) for s in credential.scopes)
+
+
+def test_translator_signs_in_with_the_identity_when_it_has_no_key(monkeypatch):
+    made = []
+    monkeypatch.setattr(localize, "DefaultAzureCredential", lambda: "the-identity")
+    monkeypatch.setattr(localize, "TextTranslationClient", lambda **kw: made.append(kw))
+    resource = "/subscriptions/s/resourceGroups/g/providers/Microsoft.CognitiveServices/accounts/t"
+    localize.AzureTranslator(Settings(azure_identity=True, translator_resource_id=resource,
+                                      translator_region="uaenorth"))
+    assert made[-1]["credential"] == "the-identity"
+    assert made[-1]["resource_id"] == resource and made[-1]["region"] == "uaenorth"
+
+    localize.AzureTranslator(Settings(azure_identity=True, translator_resource_id=resource,
+                                      translator_key="k", translator_region="uaenorth"))
+    assert isinstance(made[-1]["credential"], AzureKeyCredential) and "resource_id" not in made[-1]
+
+    with pytest.raises(MissingSetting, match="TRANSLATOR_KEY"):
+        localize.AzureTranslator(Settings(azure_identity=True, translator_region="uaenorth"))
 
 
 def test_ask_runs_tools_through_the_framework():

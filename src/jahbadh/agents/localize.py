@@ -12,6 +12,7 @@ from collections import Counter, defaultdict
 from azure.ai.translation.text import TextTranslationClient
 from azure.ai.translation.text.models import TranslateInputItem, TranslationTarget
 from azure.core.credentials import AzureKeyCredential
+from azure.identity import DefaultAzureCredential
 
 from jahbadh.agents.config import Settings
 from jahbadh.agents.contracts import Rejection, RenderedClaim, Rewrites
@@ -29,10 +30,16 @@ NUMBER_MARK = re.compile(r"(?<![\d.])\d+(?:\.\d+)?%?(?![\d.])")
 
 class AzureTranslator:
     def __init__(self, settings: Settings):
-        settings.require("translator_key", "translator_region")
-        self.client = TextTranslationClient(endpoint=settings.translator_endpoint,
-                                            credential=AzureKeyCredential(settings.translator_key.get_secret_value()),
-                                            region=settings.translator_region)
+        """Signs in with the key, or, in the cloud with no key, with the app's Azure identity (that needs the
+        resource id and "Cognitive Services User" on Translator). A key always wins."""
+        if settings.translator_key is None and settings.azure_identity and settings.translator_resource_id:
+            settings.require("translator_region")
+            credential, signed_in = DefaultAzureCredential(), {"resource_id": settings.translator_resource_id}
+        else:
+            settings.require("translator_key", "translator_region")
+            credential, signed_in = AzureKeyCredential(settings.translator_key.get_secret_value()), {}
+        self.client = TextTranslationClient(endpoint=settings.translator_endpoint, credential=credential,
+                                            region=settings.translator_region, **signed_in)
 
     def translate(self, texts: list[str], to: str, keep: list[str]) -> list[str]:
         """Translate English texts in one request, with every keep term wrapped so Translator leaves it alone."""
