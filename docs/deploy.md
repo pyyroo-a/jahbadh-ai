@@ -276,3 +276,12 @@ azd down
 ```
 
 **You should see:** azd lists `rg-jahbadh-app` and asks you to confirm. It's the only group it removes. Foundry and Translator stay in `rg-jahbadh-ai`. The two role assignments from step 8 are left pointing at an identity that's gone. They're harmless, and you can delete them in the portal under each resource's **Access control (IAM)**.
+
+## Good to know
+
+**Changing a secret needs a restart.** If `azd provision` only changes a secret's value (the ingest token, a key, the trace connection string), Container Apps keeps the running copy as it is, so it still has the old value. Restart it to pick up the new one (free, about 30 seconds):
+
+```powershell
+$rev = az resource show --ids "/subscriptions/$(azd env get-value AZURE_SUBSCRIPTION_ID)/resourceGroups/rg-jahbadh-app/providers/Microsoft.App/containerApps/ca-jahbadh" --api-version 2026-07-01 --query properties.latestRevisionName -o tsv
+az rest --method post --url "https://management.azure.com/subscriptions/$(azd env get-value AZURE_SUBSCRIPTION_ID)/resourceGroups/rg-jahbadh-app/providers/Microsoft.App/containerApps/ca-jahbadh/revisions/$rev/restart?api-version=2026-07-01"
+```

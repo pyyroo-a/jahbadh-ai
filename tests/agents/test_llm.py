@@ -1,5 +1,8 @@
 import asyncio
+import http.server
 import json
+import sys
+import threading
 import time
 
 import httpx2
@@ -58,24 +61,79 @@ def test_the_identity_switch_is_read_from_the_environment(tmp_path, monkeypatch)
     assert load_settings(None).azure_identity is False
 
 
-class FakeAsyncCredential:
+class FakeCredential:
     def __init__(self):
         self.scopes = []
 
-    async def get_token(self, *scopes, **kwargs):
+    def get_token(self, *scopes, **kwargs):
         self.scopes.append(scopes)
         return AccessToken("identity-token", int(time.time()) + 3600)
 
-    async def get_token_info(self, *scopes, options=None):
+    def get_token_info(self, *scopes, options=None):
         self.scopes.append(scopes)
         return AccessTokenInfo("identity-token", int(time.time()) + 3600)
 
-    async def close(self):
+    def close(self):
         pass
 
 
+def test_the_cloud_sign_in_needs_no_extra_http_package(monkeypatch):
+    # Container Apps sets these for a managed identity. On 20 Oct the deployed app crashed here with
+    # "aiohttp package is not installed": the async credential needs aiohttp, which we don't ship
+    monkeypatch.setenv("IDENTITY_ENDPOINT", "http://127.0.0.1:9/msi/token")
+    monkeypatch.setenv("IDENTITY_HEADER", "header")
+    monkeypatch.setenv("AZURE_CLIENT_ID", "00000000-0000-0000-0000-000000000000")
+    monkeypatch.setitem(sys.modules, "aiohttp", None)          # absent, as in the container
+    client = make_chat_client(Settings(azure_identity=True))
+    assert client is not None
+
+
+def test_the_real_managed_identity_path_signs_in_to_foundry(monkeypatch):
+    """The real DefaultAzureCredential against a local stand-in for Container Apps' identity endpoint."""
+    asked = []
+
+    class IdentityEndpoint(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            asked.append((self.path, self.headers.get("X-IDENTITY-HEADER")))
+            body = json.dumps({"access_token": "managed-token", "expires_on": str(int(time.time()) + 3600),
+                               "resource": "https://ai.azure.com", "token_type": "Bearer"}).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *args):
+            pass
+
+    server = http.server.HTTPServer(("127.0.0.1", 0), IdentityEndpoint)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        for var in ("AZURE_CLIENT_SECRET", "AZURE_TENANT_ID", "AZURE_FEDERATED_TOKEN_FILE", "MSI_ENDPOINT"):
+            monkeypatch.delenv(var, raising=False)
+        monkeypatch.setenv("IDENTITY_ENDPOINT", f"http://127.0.0.1:{server.server_port}/msi/token")
+        monkeypatch.setenv("IDENTITY_HEADER", "secret-header")
+        monkeypatch.setenv("AZURE_CLIENT_ID", "11111111-1111-1111-1111-111111111111")
+        monkeypatch.setitem(sys.modules, "aiohttp", None)
+        seen = []
+
+        def handler(req):
+            seen.append(req.headers["authorization"])
+            return httpx2.Response(200, json=responses_api_body('{"answer": "hi"}'))
+
+        http_client = httpx2.AsyncClient(transport=httpx2.MockTransport(handler))
+        client = make_chat_client(Settings(azure_identity=True), http_client=http_client)
+        assert asyncio.run(ask(make_agent(client, "writer", "be brief"), "go", Out)) == Out(answer="hi")
+    finally:
+        server.shutdown()
+    assert seen == ["Bearer managed-token"]
+    path, header = asked[0]
+    assert header == "secret-header" and "resource=https://ai.azure.com" in path
+    assert "client_id=11111111-1111-1111-1111-111111111111" in path
+
+
 def test_identity_uses_a_token_provider_for_the_ai_scope(monkeypatch):
-    credential = FakeAsyncCredential()
+    credential = FakeCredential()
     monkeypatch.setattr(llm, "DefaultAzureCredential", lambda: credential)
     seen = []
 

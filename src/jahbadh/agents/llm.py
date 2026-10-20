@@ -4,13 +4,14 @@ Everything else builds agents through make_agent and asks through ask, so tests 
 scripted chat client and never reach Azure.
 """
 
-from collections.abc import Callable, Sequence
+import asyncio
+from collections.abc import Awaitable, Callable, Sequence
 from typing import Literal, TypeVar
 
 import httpx2
 from agent_framework import Agent
 from agent_framework.openai import OpenAIChatClient
-from azure.identity.aio import DefaultAzureCredential, get_bearer_token_provider
+from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from openai import AsyncOpenAI
 from pydantic import BaseModel, ValidationError
 
@@ -27,11 +28,22 @@ class AgentOutputError(RuntimeError):
     pass
 
 
+def _identity_token() -> Callable[[], Awaitable[str]]:
+    """A bearer token for Foundry from the app's Azure identity. It uses the sync credential, run off the event
+    loop, because the async one needs aiohttp, which we don't ship (the deployed app crashed on it, 20 Oct).
+    The provider caches the token and refreshes it before it runs out."""
+    get_token = get_bearer_token_provider(DefaultAzureCredential(), AI_SCOPE)
+
+    async def token() -> str:
+        return await asyncio.to_thread(get_token)
+    return token
+
+
 def make_chat_client(settings: Settings, http_client: httpx2.AsyncClient | None = None) -> OpenAIChatClient:
     """Agent Framework's Responses API client pointed at our Foundry deployment, signed in with the key or, in the
     cloud, with the app's Azure identity (a fresh token for every request, refreshed before it runs out)."""
     if settings.uses_identity:
-        api_key = get_bearer_token_provider(DefaultAzureCredential(), AI_SCOPE)
+        api_key = _identity_token()
     else:
         settings.require("foundry_api_key")
         api_key = settings.foundry_api_key.get_secret_value()
