@@ -9,8 +9,9 @@ This guide puts the desk on Azure Container Apps, signed in without keys and tra
 - a storage account with a small file share, `state`, which keeps the daily live counter through restarts
 - Log Analytics (capped at 0.15 GB a day, so the month stays inside the free 5 GB) and Application Insights for traces
 - a managed identity, `id-jahbadh-app`, which the app uses to sign in to the registry, Foundry and Translator
+- a second identity, `id-jahbadh-deploy`, which GitHub's Deploy workflow signs in as to ship new versions (it can only change `rg-jahbadh-app`)
 
-**What stays put.** Foundry, the `gpt-5-mini` deployment and Translator stay in `rg-jahbadh-ai`. The templates only read them. The one thing that touches that group is step 7, which gives the app's identity two roles there, and you run it with its own command. So `azd down` never sees `rg-jahbadh-ai` and can never remove it.
+**What stays put.** Foundry, the `gpt-5-mini` deployment and Translator stay in `rg-jahbadh-ai`. The templates only read them. The one thing that touches that group is step 8, which gives the app's identity two roles there, and you run it with its own command. So `azd down` never sees `rg-jahbadh-ai` and can never remove it.
 
 **What it costs until 10 Nov** (UAE North prices, checked 19 Oct):
 
@@ -20,6 +21,7 @@ This guide puts the desk on Azure Container Apps, signed in without keys and tra
 | Container app while it sleeps between visits (`MIN_REPLICAS 0`) | nothing idle; the monthly free grant covers hours of watching |
 | Container app always on for judging (`MIN_REPLICAS 1`, 25 Oct to 10 Nov) | about $3.40 idle, plus a few cents an hour while people watch |
 | Storage account and file share | a few cents |
+| Building and shipping on GitHub Actions | free (public repo) |
 | Log Analytics and Application Insights | free under the daily cap |
 | A live run ("Run a fresh match" or a spotlight) | about $0.50 each, at most 3 a day |
 
@@ -115,25 +117,55 @@ if (azd env get-value JAHBADH_INGEST_TOKEN) { "token is set" }
 azd provision --preview
 ```
 
-**You should see:** a list of resources to create, all in `rg-jahbadh-app`: the resource group, a Log Analytics workspace, Application Insights, a container registry, a storage account with its file share, the managed identity and its AcrPull role, the Container Apps environment with its storage link, and the container app. Nothing should be listed in `rg-jahbadh-ai`. Read it through. If anything else shows up, stop and ask.
+**You should see:** a list of resources to create, all in `rg-jahbadh-app`: the resource group, a Log Analytics workspace, Application Insights, a container registry, a storage account, the Container Apps environment and the container app. Smaller pieces that live under these (the file share, the two identities and their roles, the environment's storage link) are made with them but not listed. Nothing should be listed in `rg-jahbadh-ai`. Read it through. If anything else shows up, stop and ask.
 
-## 6. Create it and ship the app
+## 6. Create the resources
 
 **Cost:** this is the step that starts the costs in the table above. Only run it after a yes.
 
 ```powershell
-azd up
+azd provision
 ```
 
-It takes about 5 to 10 minutes. First it creates the resources, then it uploads the code, builds the image in the registry and starts the app. For a minute before the build is done, the app runs a placeholder image and may look unhealthy. That's expected.
+It takes about 5 minutes. **You should see:** `SUCCESS`. The container app exists now but runs a public placeholder image, so the site doesn't show the desk yet. Step 7 ships the real image.
 
-**You should see:** `SUCCESS` and an endpoint like `https://ca-jahbadh.<something>.uaenorth.azurecontainerapps.io`. Save it:
+Why not `azd up`, which would also build and ship? azd builds the image inside the registry (ACR Tasks), and Microsoft has paused ACR Tasks for subscriptions on free credits, Azure for Students included. `azd up` there stops with `TasksOperationsNotAllowed`. On a pay-as-you-go subscription, `azd up` works and you can skip step 7.
+
+## 7. Ship the app from GitHub
+
+**Cost:** free. GitHub Actions minutes are free for public repos.
+
+The Deploy workflow (`.github/workflows/deploy.yml`) runs the tests, builds the image with Docker on GitHub's machine, pushes it to the registry and points the app at it. It signs in as `id-jahbadh-deploy`, an identity that only trusts GitHub runs on this repo's `main` branch, so no password is stored anywhere. It only runs when you press the button.
+
+First, print the five values the workflow needs (none of them is a secret, they're ids and addresses):
+
+```powershell
+"AZURE_CLIENT_ID = " + (azd env get-value AZURE_DEPLOY_CLIENT_ID)
+"AZURE_TENANT_ID = " + (az account show --query tenantId -o tsv)
+"AZURE_SUBSCRIPTION_ID = " + (azd env get-value AZURE_SUBSCRIPTION_ID)
+"AZURE_CONTAINER_REGISTRY_ENDPOINT = " + (azd env get-value AZURE_CONTAINER_REGISTRY_ENDPOINT)
+"SERVICE_API_URI = " + (azd env get-value SERVICE_API_URI)
+```
+
+Then add them on GitHub:
+
+1. Open the repo on GitHub, then **Settings**, **Secrets and variables**, **Actions**, and the **Variables** tab.
+2. Choose **New repository variable** for each of the five, with exactly the name and value printed above. Use Variables, not Secrets.
+
+Then run it:
+
+1. Open the **Actions** tab, pick **Deploy** on the left, then **Run workflow** on `main`.
+2. Wait for both jobs to go green: the tests take about 7 minutes, the build and ship about 5.
+
+**You should see:** a green run whose last step prints `{"ok":true}`. Save the address for the checks below:
 
 ```powershell
 $url = azd env get-value SERVICE_API_URI
 ```
 
-## 7. Give the app's identity its two roles
+**If "Sign in to Azure" fails** with `AADSTS700213` (no matching federated identity), the message names the subject GitHub sent. Send it over: the trusted subject in `infra/app.bicep` must match it exactly. To ship a new version later, just press Run workflow again.
+
+## 8. Give the app's identity its two roles
 
 **Cost:** free.
 
@@ -145,9 +177,9 @@ az deployment group create --resource-group rg-jahbadh-ai --template-file infra/
 
 **You should see:** `"provisioningState": "Succeeded"`. Roles can take up to 10 minutes to start working.
 
-**If it says `AuthorizationFailed`:** the subscription won't let you hand out roles. Skip to step 12 for the key fallback.
+**If it says `AuthorizationFailed`:** the subscription won't let you hand out roles. Skip to step 13 for the key fallback.
 
-## 8. Check the site
+## 9. Check the site
 
 **Cost:** free (replay never calls the model).
 
@@ -168,7 +200,7 @@ curl.exe -s -o NUL -w "%{time_total}`n" "$url/api/health"
 
 Write the number down (it goes in the README). A second request straight after should be quick.
 
-## 9. Connect Application Insights to Foundry
+## 10. Connect Application Insights to Foundry
 
 **Cost:** free.
 
@@ -176,9 +208,9 @@ Write the number down (it goes in the README). A second request straight after s
 2. Open **Tracing** (under Observe or Monitoring in the left menu).
 3. Choose **Connect** and pick the Application Insights resource whose name starts with `appi-jahbadh-`.
 
-**You should see:** the Tracing page, empty for now. Traces show up after the live run in step 11.
+**You should see:** the Tracing page, empty for now. Traces show up after the live run in step 12.
 
-## 10. Try the budget alerts
+## 11. Try the budget alerts
 
 **Cost:** free.
 
@@ -188,7 +220,7 @@ Write the number down (it goes in the README). A second request straight after s
 
 **If Azure refuses** (Microsoft's docs say Azure for Students may not support budgets), the fallback is the credit's own hard stop: Azure stops paid services when the credit runs out. Check the balance at [microsoftazuresponsorships.com](https://www.microsoftazuresponsorships.com/Balance) every couple of days. Either way, note which one we have, because it goes in the README.
 
-## 11. One live run
+## 12. One live run
 
 **Cost:** about $0.50, and it uses one of today's 3 live runs. Only run it after a yes.
 
@@ -200,9 +232,9 @@ Open the site and press **Run a fresh match** in the top bar, next to the replay
 - in the Azure portal, the storage account's **File shares**, then `state`, has a `live.json` (so the counter survives restarts)
 - in Foundry's Tracing page, after a few minutes, traces for the agents (analyst, tactical, writer, referee)
 
-If the feed says live mode isn't set up, or the lines never come, the roles from step 7 may still be settling. Wait 10 minutes and try once more. If it still fails, use step 12.
+If the feed says live mode isn't set up, or the lines never come, the roles from step 8 may still be settling. Wait 10 minutes and try once more. If it still fails, use step 13.
 
-## 12. Only if step 7 failed: the key fallback
+## 13. Only if step 8 failed: the key fallback
 
 **Cost:** free.
 
@@ -216,7 +248,7 @@ azd provision
 
 They're kept as Container Apps secrets, never in the repo. The README then says the cloud app uses keys and why.
 
-## 13. On submission day: keep one copy always on
+## 14. On submission day: keep one copy always on
 
 **Cost:** about $3.40 until 10 Nov (see the table).
 
@@ -227,7 +259,7 @@ azd provision
 
 **You should see:** the app keeps its image (provision reads the one it's running). In the portal, the container app's **Scale** shows min 1, max 1. The site now answers straight away, with no cold start.
 
-## 14. After 10 Nov: take it all down
+## 15. After 10 Nov: take it all down
 
 **Cost:** stops the costs.
 
@@ -235,4 +267,4 @@ azd provision
 azd down
 ```
 
-**You should see:** azd lists `rg-jahbadh-app` and asks you to confirm. It's the only group it removes. Foundry and Translator stay in `rg-jahbadh-ai`. The two role assignments from step 7 are left pointing at an identity that's gone. They're harmless, and you can delete them in the portal under each resource's **Access control (IAM)**.
+**You should see:** azd lists `rg-jahbadh-app` and asks you to confirm. It's the only group it removes. Foundry and Translator stay in `rg-jahbadh-ai`. The two role assignments from step 8 are left pointing at an identity that's gone. They're harmless, and you can delete them in the portal under each resource's **Access control (IAM)**.

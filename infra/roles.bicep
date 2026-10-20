@@ -1,5 +1,5 @@
 // Lets the app's identity call the model and Translator, and nothing more. You run this with its own command
-// (docs/deploy.md step 7), so azd never deploys anything into the Foundry resource group.
+// (docs/deploy.md step 8), so azd never deploys anything into the Foundry resource group.
 param principalId string
 param foundryName string = 'jahbadh-foundry'
 param translatorName string

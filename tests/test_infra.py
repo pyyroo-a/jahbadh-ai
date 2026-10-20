@@ -88,6 +88,45 @@ def test_reprovisioning_keeps_the_deployed_image():
     assert "fetch-image.bicep" in read("app.bicep")
 
 
+WORKFLOWS = REPO / ".github" / "workflows"
+GITHUB_SUBJECT = "repo:pyyroo-a@195799002/jahbadh-ai@1423169832:ref:refs/heads/main"
+
+
+def test_deploy_only_runs_when_asked():
+    deploy = (WORKFLOWS / "deploy.yml").read_text(encoding="utf-8")
+    triggers = re.search(r"^on:\n((?:  .*\n)+)", deploy, re.M)
+    assert triggers and re.findall(r"^  (\w+):", triggers.group(1), re.M) == ["workflow_dispatch"]
+    # it signs in with GitHub's token, never a stored password
+    assert "id-token: write" in deploy and "secrets." not in deploy
+
+
+def test_deploy_runs_the_tests_first():
+    deploy = (WORKFLOWS / "deploy.yml").read_text(encoding="utf-8")
+    assert re.search(r"^  test:\n    uses: \./\.github/workflows/ci\.yml$", deploy, re.M)
+    assert re.search(r"^  deploy:\n    needs: test$", deploy, re.M)
+    assert re.search(r"^  workflow_call:", (WORKFLOWS / "ci.yml").read_text(encoding="utf-8"), re.M)
+
+
+def test_the_federated_credential_trusts_only_main():
+    app = read("app.bicep")
+    assert len(re.findall(r"'Microsoft\.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials@", app)) == 1
+    assert "issuer: 'https://token.actions.githubusercontent.com'" in app
+    # repos made after 15 July 2026 sign in with owner and repo ids in the subject
+    assert f"subject: '{GITHUB_SUBJECT}'" in app
+    assert "audiences: ['api://AzureADTokenExchange']" in app
+    assert "AZURE_DEPLOY_CLIENT_ID" in read("main.bicep")
+
+
+def test_the_deploy_identity_can_only_change_the_app_group():
+    app = read("app.bicep")
+    assert "b24988ac-6180-42a0-ab88-20f7382dd24c" in app      # Contributor, on this resource group only
+    assert "8311e382-0749-4cb8-b61a-304f252e45ec" in app      # AcrPush
+    for owner_like in ("8e3af657-a8ff-443c-a75c-2fe8c4bcb635", "18d7d88d-d35e-4fb5-a5c3-7773c20a72d9"):
+        assert owner_like not in app                          # Owner, User Access Administrator
+    contributor = re.search(r"resource deployContributor '[^']+' = \{(.*?)\n\}", app, re.S)
+    assert contributor and "scope:" not in contributor.group(1)   # no scope means the app group itself
+
+
 def test_azd_finds_the_app_and_builds_it_in_the_cloud():
     azure = (REPO / "azure.yaml").read_text(encoding="utf-8")
     assert re.search(r"^name: jahbadh$", azure, re.M)

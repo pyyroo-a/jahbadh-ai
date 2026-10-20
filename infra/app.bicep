@@ -108,6 +108,47 @@ resource pull 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   }
 }
 
+// GitHub's Deploy workflow signs in as this identity, with GitHub's own short-lived token: no stored password.
+// It builds the image (Azure for Students can't build in the registry), pushes it, and points the app at it.
+var contributor = 'b24988ac-6180-42a0-ab88-20f7382dd24c' // Contributor, on this resource group only
+var acrPush = '8311e382-0749-4cb8-b61a-304f252e45ec' // AcrPush
+
+resource deployIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
+  name: 'id-jahbadh-deploy'
+  location: location
+  tags: tags
+}
+
+resource githubMain 'Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials@2023-01-31' = {
+  parent: deployIdentity
+  name: 'github-main'
+  properties: {
+    issuer: 'https://token.actions.githubusercontent.com'
+    // GitHub repos made after 15 July 2026 put the owner and repo ids in the subject; only main is trusted
+    subject: 'repo:pyyroo-a@195799002/jahbadh-ai@1423169832:ref:refs/heads/main'
+    audiences: ['api://AzureADTokenExchange']
+  }
+}
+
+resource deployContributor 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(resourceGroup().id, deployIdentity.id, contributor)
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', contributor)
+    principalId: deployIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+resource deployPush 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(registry.id, deployIdentity.id, acrPush)
+  scope: registry
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', acrPush)
+    principalId: deployIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
 // Only the Consumption profile: pay for what runs, no plan management fee. The mode is set on purpose: left
 // unset, Azure makes an Express environment, and Express can't mount the file share.
 resource environment 'Microsoft.App/managedEnvironments@2026-07-01' = {
@@ -151,7 +192,7 @@ module fetchImage 'fetch-image.bicep' = {
   }
 }
 
-// Keys only go in if the role assignments were refused (docs/deploy.md step 11). A key always wins in the app.
+// Keys only go in if the role assignments were refused (docs/deploy.md step 13). A key always wins in the app.
 var keySecrets = concat(
   empty(foundryKey) ? [] : [{ name: 'foundry-key', value: foundryKey }],
   empty(translatorKey) ? [] : [{ name: 'translator-key', value: translatorKey }]
@@ -232,3 +273,4 @@ output registryEndpoint string = registry.properties.loginServer
 output uri string = 'https://${app.properties.configuration.ingress.fqdn}'
 output appInsightsName string = insights.name
 output identityPrincipalId string = identity.properties.principalId
+output deployClientId string = deployIdentity.properties.clientId

@@ -1,0 +1,65 @@
+name: Deploy
+
+# Ships the app to Azure, only when you press "Run workflow" on the Actions tab. A push never changes the demo.
+# It runs the tests first, then builds the image here (Azure for Students can't build inside the registry),
+# pushes it and points the container app at it. It signs in with GitHub's own short-lived token, which the
+# deploy identity trusts for main only, so there's no stored password. The values are repo variables
+# (docs/deploy.md step 7), and none of them is a secret.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  test:
+    uses: ./.github/workflows/ci.yml
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    env:
+      IMAGE: ${{ vars.AZURE_CONTAINER_REGISTRY_ENDPOINT }}/jahbadh/api:${{ github.sha }}
+      APP: ca-jahbadh
+      GROUP: rg-jahbadh-app
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Sign in to Azure
+        uses: azure/login@v3
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build the image
+        run: docker build --tag "$IMAGE" .
+
+      - name: Push it to the registry
+        run: |
+          registry="${{ vars.AZURE_CONTAINER_REGISTRY_ENDPOINT }}"
+          az acr login --name "${registry%%.*}"
+          docker push "$IMAGE"
+
+      - name: Point the app at the new image
+        run: |
+          az extension add --name containerapp --upgrade --only-show-errors
+          az containerapp update --name "$APP" --resource-group "$GROUP" --image "$IMAGE" --only-show-errors --output none
+
+      - name: Wait for the new copy to be ready
+        run: |
+          for attempt in $(seq 1 30); do
+            latest=$(az containerapp show --name "$APP" --resource-group "$GROUP" --query properties.latestRevisionName -o tsv)
+            ready=$(az containerapp show --name "$APP" --resource-group "$GROUP" --query properties.latestReadyRevisionName -o tsv)
+            if [ "$latest" = "$ready" ]; then echo "Ready: $ready"; break; fi
+            echo "Waiting for $latest to be ready"
+            sleep 10
+          done
+          [ "$latest" = "$ready" ]
+
+      - name: Check it answers
+        run: |
+          url=$(az containerapp show --name "$APP" --resource-group "$GROUP" --query properties.configuration.ingress.fqdn -o tsv)
+          curl --fail --silent --show-error --retry 10 --retry-delay 10 --retry-all-errors "https://$url/api/health"

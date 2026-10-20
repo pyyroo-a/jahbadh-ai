@@ -77,4 +77,5 @@ output AZURE_CONTAINER_REGISTRY_ENDPOINT string = app.outputs.registryEndpoint
 output SERVICE_API_URI string = app.outputs.uri
 output APPLICATIONINSIGHTS_NAME string = app.outputs.appInsightsName
 output APP_IDENTITY_PRINCIPAL_ID string = app.outputs.identityPrincipalId
+output AZURE_DEPLOY_CLIENT_ID string = app.outputs.deployClientId
 output FOUNDRY_RESOURCE_GROUP string = foundryResourceGroup
