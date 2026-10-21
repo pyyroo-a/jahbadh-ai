@@ -135,6 +135,7 @@ export interface EventLine {
   xg: number | null;
   speed_kmh: number | null;          // synthetic ball speed, on passes and shots only
   lines: Record<Language, string>;
+  buildup?: EventLine[] | null;      // goals only: the move's steps in order, the shot last (picked by the server)
 }
 
 export interface MatchState {

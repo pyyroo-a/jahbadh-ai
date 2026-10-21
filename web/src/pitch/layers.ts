@@ -88,6 +88,31 @@ export function metricLayer(m: Metric, info: MatchInfo): Layer {
 export type Arrow = { id: number; x1: number; y1: number; x2: number; y2: number };
 export type Point = { id: number; x: number; y: number; type: EventLine["type"] };
 
+export type ReplayStep = {
+  id: number; kind: "pass" | "carry" | "shot" | "point"; x1: number; y1: number; x2: number; y2: number;
+  shirt: string | null; team: string;
+};
+
+/** A goal's build-up in raw coordinates, in order: passes and carries as arrows, the shot as an arrow to where it
+ *  was recorded ending, the rest (a won tackle, a free kick, a goal with no shot) as points. A scoring-team player's
+ *  shirt number marks their first touch in a row. */
+export function replaySteps(steps: EventLine[], info: MatchInfo): ReplayStep[] {
+  const team = steps.at(-1)?.team_id ?? "";
+  let last: string | null = null;
+  return steps.map((e) => {
+    const [x1, y1] = toSvg(e.x, e.y);
+    const arrow = e.end_x !== null && e.end_y !== null && (e.type === "PASS" || e.type === "CARRY" || e.type === "SHOT");
+    const [x2, y2] = arrow ? toSvg(e.end_x!, e.end_y!) : [x1, y1];
+    const kind = !arrow ? "point" : e.type === "PASS" ? "pass" : e.type === "CARRY" ? "carry" : "shot";
+    let mark: string | null = null;
+    if (e.team_id === team && e.player_id && e.player_id !== last) {
+      mark = shirt(info, e.player_id);
+      last = e.player_id;
+    }
+    return { id: e.id, kind, x1, y1, x2, y2, shirt: mark, team: e.team_id };
+  });
+}
+
 /** A claim's events in raw coordinates: passes and carries with an end point as arrows, the rest as points. */
 export function eventLayer(events: EventLine[]): { arrows: Arrow[]; points: Point[] } {
   const arrows: Arrow[] = [], points: Point[] = [];

@@ -23,6 +23,14 @@ export const COMBO_NOTICES = {
   failed: "That version couldn't be added just now. Please try again.",
 };
 
+export const GOAL_LABELS = {
+  row: "Goal build-ups",
+  title: (minute: number) => `How the ${minute}' goal was built`,
+  fromData: "The move, from the match data",
+  noBuildUp: "No passes or carries before the shot in this move.",
+  cardHint: (minute: number) => `${minute}' goal build-up`,
+};
+
 export const NOTES: Record<string, string> = {
   "persona fallback": "Shown in the pundit's words",
   "english fallback": "Shown in English",

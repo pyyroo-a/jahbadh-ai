@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { EventLine } from "../api/types";
 import { info, metric } from "../test-fixtures";
 import { WIDTH, zoneRect } from "./coords";
-import { eventLayer, metricLayer } from "./layers";
+import { eventLayer, metricLayer, replaySteps } from "./layers";
 
 const heat = metric("heatmap", "RMU-33", { grid: [], cells: [21, 14], samples: 0 }, 0, "samples");
 
@@ -64,5 +64,37 @@ describe("eventLayer", () => {
     const { arrows, points } = eventLayer([ev(1, "PASS", [70, 40]), ev(2, "SHOT", null), ev(3, "PASS", null)]);
     expect(arrows).toEqual([{ id: 1, x1: 50, y1: 8, x2: 70, y2: 28 }]);
     expect(points.map((p) => [p.id, p.x, p.y])).toEqual([[2, 50, 8], [3, 50, 8]]);
+  });
+});
+
+describe("replaySteps", () => {
+  const step = (id: number, type: EventLine["type"], player: string, from: [number, number],
+    end: [number, number] | null = null): EventLine => ({
+    id, t: id, minute: 1, type, team_id: player.slice(0, 3), player_id: player, related_player_id: null,
+    x: from[0], y: from[1], end_x: end?.[0] ?? null, end_y: end?.[1] ?? null, outcome: true, xg: null, speed_kmh: null,
+    lines: { en: "", ar: "", es: "" },
+  });
+  const shot = step(9, "SHOT", "NBR-9", [99, 33], [105, 34]);
+
+  it("draws a pass from its start to its end in the broadcast frame", () => {
+    expect(replaySteps([step(1, "PASS", "NBR-9", [50, 60], [70, 40]), shot], info)[0])
+      .toEqual({ id: 1, kind: "pass", x1: 50, y1: 8, x2: 70, y2: 28, shirt: "9", team: "NBR" });
+  });
+
+  it("ends the shot where it was recorded", () => {
+    const [s] = replaySteps([shot], info);
+    expect([s.kind, s.x2, s.y2]).toEqual(["shot", 105, 34]);
+  });
+
+  it("draws a tackle, a foul and a goal with no shot as points", () => {
+    const steps = replaySteps([step(1, "TACKLE", "NBR-9", [40, 30]), step(2, "FOUL", "RMU-4", [60, 20]),
+      step(3, "GOAL", "NBR-10", [100, 34])], info);
+    expect(steps.map((s) => [s.kind, s.x2 === s.x1 && s.y2 === s.y1])).toEqual([["point", true], ["point", true], ["point", true]]);
+  });
+
+  it("puts a shirt number only at a new player's first touch", () => {
+    const steps = replaySteps([step(1, "PASS", "NBR-9", [40, 30], [50, 30]), step(2, "CARRY", "NBR-10", [50, 30], [55, 30]),
+      step(3, "FOUL", "RMU-4", [55, 30]), step(4, "PASS", "NBR-10", [55, 30], [90, 34]), shot], info);
+    expect(steps.map((s) => s.shirt)).toEqual(["9", "10", null, null, "9"]);
   });
 });
