@@ -4,6 +4,7 @@
     python -m jahbadh.eval --seeds 1-20 --plants 50 --limit-matches 1 --out data/eval/pilot
     python -m jahbadh.eval --seeds 1-20 --plants 50 --out data/eval/2026-10-20-referee
     python -m jahbadh.eval showcase                                   today's number check on the showcase (free)
+    python -m jahbadh.eval upload data/eval/<run> --project <Foundry project endpoint>   log a run to Foundry (free)
 
 Anything without --dry calls the model and costs money.
 """
@@ -45,10 +46,23 @@ def _showcase() -> int:
     return 0
 
 
+def _upload(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(prog="python -m jahbadh.eval upload",
+                                     description="Log a finished eval run to the Foundry project (no model calls).")
+    parser.add_argument("run", type=Path, help="the run folder, e.g. data/eval/2026-10-19-referee")
+    parser.add_argument("--project", required=True, help="the Foundry project endpoint")
+    args = parser.parse_args(argv)
+    from jahbadh.eval import foundry          # needs the eval extra, so only loaded here
+    print(f"uploaded: {foundry.upload_to_foundry(args.run, args.project)}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
     if argv[:1] == ["showcase"]:
         return _showcase()
+    if argv[:1] == ["upload"]:
+        return _upload(argv[1:])
     parser = argparse.ArgumentParser(description="Measure the Referee with planted false claims.")
     parser.add_argument("--seeds", default="1-20")
     parser.add_argument("--plants", type=int, default=50)

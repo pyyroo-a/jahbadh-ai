@@ -27,6 +27,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]
+eval = ["azure-ai-evaluation>=1.18"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

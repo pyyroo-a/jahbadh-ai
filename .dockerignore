@@ -1,4 +1,5 @@
 .venv
+.venv-eval
 **/node_modules
 data/generated
 data/state

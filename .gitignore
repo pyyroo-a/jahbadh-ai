@@ -12,6 +12,7 @@
 __pycache__/
 *.py[cod]
 .venv/
+.venv-eval/
 *.egg-info/
 venv/
 .pytest_cache/
