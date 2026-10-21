@@ -3,7 +3,7 @@ import type { Language } from "../../api/types";
 import type { DeskState } from "../../state/desk";
 import { visibleEvents } from "../../state/events";
 import { weaveFeed } from "../../state/feed";
-import { FEED_LABELS, SPEED_NOTE } from "../../state/labels";
+import { FEED_LABELS, speedNote } from "../../state/labels";
 import MomentumBar from "../MomentumBar";
 import TacticalCard from "../TacticalCard";
 
@@ -29,7 +29,7 @@ export default function FanLayout({ desk, language, tactical, tacticalOpen, rend
       <TacticalCard forcedOpen={tacticalOpen}>{tactical}</TacticalCard>
       <section className="column happening">
         <h2>{FEED_LABELS.happening}</h2>
-        {desk.info && desk.info.mode !== "replay" && <div className="note">{SPEED_NOTE}</div>}
+        {desk.info && speedNote(desk.info) && <div className="note">{speedNote(desk.info)}</div>}
         {desk.thinking.map((m) => <div key={m.id} className="thinking">The desk is thinking about {m.label}...</div>)}
         {entries.map((e) => e.kind === "desk"
           ? <div key={e.item.moment.id}>{renderItem(e.item)}</div>

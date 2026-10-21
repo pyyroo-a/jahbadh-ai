@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { FeedItem, Language, MetricChoice, Persona } from "../api/types";
 import { type DeskState, rejectionsFor } from "../state/desk";
-import { SPEED_NOTE } from "../state/labels";
+import { speedNote } from "../state/labels";
 import type { Selection } from "../state/evidence";
 import { type Mode, rankClaims, recapOrder } from "../state/personal";
 import ClaimCard from "./ClaimCard";
@@ -73,7 +73,7 @@ export default function DeskFeed(props: Props) {
   return (
     <section className="column feed">
       <h2>{props.title ?? "Desk feed"}</h2>
-      {desk.info && desk.info.mode !== "replay" && <div className="note">{SPEED_NOTE}</div>}
+      {desk.info && speedNote(desk.info) && <div className="note">{speedNote(desk.info)}</div>}
       {notice && <div className="note">{notice}</div>}
       {desk.thinking.map((m) => <div key={m.id} className="thinking">The desk is thinking about {m.label}...</div>)}
       {newestFirst.map((item) => <Moment key={item.moment.id} {...props} item={item} />)}

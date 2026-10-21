@@ -1,6 +1,6 @@
 // The words the desk shows for its switches and checks.
 
-import type { Language, Persona, Rejection } from "../api/types";
+import type { Language, MatchInfo, Persona, Rejection } from "../api/types";
 
 export const PERSONAS: { key: Persona; label: string }[] = [
   { key: "pundit", label: "Studio pundit" }, { key: "casual", label: "Casual fan" }, { key: "fantasy", label: "Fantasy" },
@@ -36,8 +36,18 @@ export const FEED_LABELS = {
   more: (n: number) => `Show ${n} more ${n === 1 ? "event" : "events"}`,
 };
 
-/** Shown in live and ingest mode, where the desk's lines take a minute or two. */
-export const SPEED_NOTE = "Quick lines arrive straight away. The desk's checked lines land a minute or two after each moment.";
+/** Shown in live and ingest mode, where the desk's lines take about a minute of real time to write and check.
+ *  Live gives that minute in match minutes at its speed; an outside feed sets its own pace, so it gets no number. */
+export function speedNote(info: MatchInfo): string | null {
+  if (info.mode === "live") {
+    return "Quick lines arrive straight away. The desk's checked lines take about a minute to write and check, " +
+      `which is about ${info.speed} match minutes at ${info.speed}x, so they land a little after the moment they describe.`;
+  }
+  if (info.mode === "ingest") {
+    return "Quick lines arrive straight away. The desk's checked lines land a minute or two after each moment.";
+  }
+  return null;
+}
 
 export const WATCH_LABELS = {
   table: "Player watch · sort by any column · click a player to follow",
