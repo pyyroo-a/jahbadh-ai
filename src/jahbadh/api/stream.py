@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from jahbadh.agents.contracts import DeskStep, Language, Rejection, RenderedClaim
 from jahbadh.schemas import EventType, Metric, Team
 
-StreamKind = Literal["match", "event", "state", "thinking", "feed", "failure", "renders", "cue", "end", "step"]
+StreamKind = Literal["match", "event", "state", "thinking", "feed", "failure", "renders", "cue", "end", "step", "pace"]
 
 
 class MatchInfo(BaseModel):
@@ -74,6 +74,13 @@ class StepUpdate(BaseModel):
     moment_id: str
     step: DeskStep
     t: float
+
+
+class PaceUpdate(BaseModel):
+    """From match second t the clock runs at `speed`; `holding` names the key moments slowing it, earliest first."""
+    t: float
+    speed: float
+    holding: list[str]
 
 
 class StreamEnd(BaseModel):

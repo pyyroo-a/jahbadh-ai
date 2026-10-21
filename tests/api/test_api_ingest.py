@@ -201,3 +201,11 @@ def test_an_ingest_moment_reports_its_steps(tmp_path):
         goal = next(i.data.moment.id for i in history if i.kind == "feed")
         steps = [i.data.step for i in history if i.kind == "step" and i.data.moment_id == goal]
         assert steps[0] == "analyst" and steps[-1] == "publish"
+
+
+def test_an_outside_feed_never_slows(tmp_path):
+    with TestClient(ingest_app(tmp_path, live_mode=True)) as c:
+        rid = start(c)["run_id"]
+        c.post(f"/api/ingest/{rid}/events", json=batch(1, FIRST_GOAL.id + 5), headers=TOKEN)
+        _wait_for(c, "feed")
+        assert not any(i.kind == "pace" for i in c.app.state.ingest.history)

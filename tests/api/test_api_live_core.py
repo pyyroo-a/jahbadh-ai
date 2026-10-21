@@ -8,9 +8,10 @@ from apifakes import demo_match, recording_sleep, scripted_full_desk_client
 from jahbadh.agents import pipeline
 from jahbadh.agents.desk import Desk
 from jahbadh.api.limits import DailyLimit
-from jahbadh.api.live import LIVE_SPEED, SKIP_LEAD_S, LiveRun, key_moments
+from jahbadh.api.live import LIVE_HOLD_CAP_S, LIVE_SPEED, SKIP_LEAD_S, LiveRun, key_moments
 
 DEMO = demo_match()
+KEY = key_moments(DEMO)
 
 
 def run_with(sleep=None, now=lambda: 0.0, **kw) -> LiveRun:
@@ -73,7 +74,7 @@ def test_a_live_run_publishes_every_key_moment_on_the_clock():
         if i.kind == "feed":          # never before its own thinking
             assert any(h.kind == "thinking" and h.data.id == i.data.moment.id for h in run.history[:n])
     assert sum(k_ == "event" for k_ in k) == len(DEMO.events)
-    assert sum(slept) == pytest.approx(5400 / LIVE_SPEED)
+    assert sum(slept) == pytest.approx(real_seconds(run))
     assert [n for n, _ in seen] == list(range(len(run.history)))
 
 
@@ -427,3 +428,194 @@ def test_a_failed_moment_sends_no_publish_step(monkeypatch):
     asyncio.run(drain(run))
     steps = [i.data.step for i in run.history if i.kind == "step" and i.data.moment_id == broken.id]
     assert "publish" not in steps and any(i.kind == "failure" for i in run.history)
+
+
+# -- the slow-down: a key moment holds the match at real time until its checked line lands ---------------------
+
+def paces(run: LiveRun) -> list[tuple[int, object]]:
+    return [(n, i) for n, i in enumerate(run.history) if i.kind == "pace"]
+
+
+def real_seconds(run: LiveRun) -> float:
+    """The real time a run should have slept: each stretch of match seconds over the speed in force then."""
+    total, t, speed = 0.0, 0.0, LIVE_SPEED
+    for _, p in paces(run):
+        total += (p.t - t) / speed
+        t, speed = p.t, p.data.speed
+    return total + (5400 - t) / speed
+
+
+def held_desk(monkeypatch, gates: dict) -> None:
+    """Moments in `gates` stay with the desk until their event is set; every other moment publishes at once."""
+    from jahbadh.agents.contracts import FeedItem
+
+    async def publish(desk, moment, on_step=None):
+        if moment.id in gates:
+            await gates[moment.id].wait()
+        return FeedItem(moment=moment, claims=[], renders=[], rejections=[], metrics=[], stats={}, latency_s=0.0)
+
+    monkeypatch.setattr(pipeline, "run_moment", publish)
+
+
+def index_of(run: LiveRun, kind: str, moment_id: str) -> int:
+    for n, i in enumerate(run.history):
+        if i.kind == kind and (i.data.id if kind == "thinking" else i.data.moment.id) == moment_id:
+            return n
+    raise AssertionError(f"no {kind} for {moment_id}")
+
+
+def test_a_key_moment_holds_the_match_at_real_time_until_its_line_lands(monkeypatch):
+    first = KEY[0]
+    gates = {first.id: asyncio.Event()}
+    held_desk(monkeypatch, gates)
+    calls: list[tuple[float, float]] = []
+    run = None
+
+    async def sleep(s: float) -> None:
+        calls.append((run.clock, s))
+        if sum(1 for c, _ in calls if c >= first.t) == 5:
+            gates[first.id].set()
+
+    run = run_with(sleep)
+    asyncio.run(drain(run))
+    h = run.history
+    n = index_of(run, "thinking", first.id)
+    assert h[n + 1].kind == "pace" and h[n + 1].t == first.t
+    assert h[n + 1].data.speed == 1.0 and h[n + 1].data.holding == [first.id]
+    assert [s for c, s in calls if c >= first.t][:5] == [1.0] * 5
+    feed = index_of(run, "feed", first.id)
+    assert first.t + 4 <= h[feed].t <= first.t + 5
+    back = next(p for m, p in paces(run) if m > feed)
+    assert back.data.speed == LIVE_SPEED and back.data.holding == [] and h[feed].t <= back.t <= h[feed].t + 1
+    assert sum(s for _, s in calls) == pytest.approx(real_seconds(run))
+
+
+def test_the_match_never_slows_before_a_moment():
+    run = run_with()
+    asyncio.run(drain(run))
+    h = run.history
+    seen: set[str] = set()
+    for n, p in paces(run):
+        for mid in set(p.data.holding) - seen:              # a hold that starts here
+            assert h[n - 1].kind == "thinking" and h[n - 1].data.id == mid and h[n - 1].t == p.t
+            assert all(i.t <= p.t for i in h[:n] if i.kind == "event")
+        seen |= set(p.data.holding)
+    assert seen                                              # the scripted desk takes a few ticks, so holds happened
+
+
+def test_a_stuck_moment_lets_the_match_go_after_the_cap(monkeypatch):
+    first = KEY[0]
+    gates = {first.id: asyncio.Event()}
+    held_desk(monkeypatch, gates)
+    real = [0.0]
+    run = None
+
+    async def sleep(s: float) -> None:
+        real[0] += s
+        if run.clock >= first.t + 150:
+            gates[first.id].set()
+
+    run = run_with(sleep, now=lambda: real[0])
+    asyncio.run(drain(run))
+    feed = index_of(run, "feed", first.id)
+    let_go = [(n, p) for n, p in paces(run) if p.data.holding == [] and n < feed]
+    assert let_go and let_go[0][1].data.speed == LIVE_SPEED
+    assert LIVE_HOLD_CAP_S - 1 <= let_go[0][1].t - first.t <= LIVE_HOLD_CAP_S + 1
+    assert run.history[feed].t > let_go[0][1].t                 # the line still came, later
+
+
+def test_a_failed_moment_ends_its_hold(monkeypatch):
+    broken = KEY[2]
+    real = pipeline.analyse
+
+    async def flaky(run):
+        if run.moment.id == broken.id:
+            raise RuntimeError("model said no")
+        return await real(run)
+
+    monkeypatch.setattr(pipeline, "analyse", flaky)
+    run = run_with()
+    asyncio.run(drain(run))
+    failure = next(n for n, i in enumerate(run.history) if i.kind == "failure")
+    later = [p for n, p in paces(run) if n > failure]
+    assert later and broken.id not in later[0].data.holding
+    assert run._holds == {}
+
+
+def test_two_close_moments_hold_until_both_land(monkeypatch):
+    a, b = KEY[0], KEY[1]
+    gates = {a.id: asyncio.Event(), b.id: asyncio.Event()}
+    held_desk(monkeypatch, gates)
+    ticks = [0]
+    run = None
+
+    async def sleep(s: float) -> None:
+        if run.clock >= b.t:
+            ticks[0] += 1
+            if ticks[0] == 3:
+                gates[b.id].set()
+            if ticks[0] == 6:
+                gates[a.id].set()
+
+    run = run_with(sleep)
+    asyncio.run(drain(run))
+    seq = [(p.data.speed, p.data.holding) for _, p in paces(run) if set(p.data.holding) <= {a.id, b.id}]
+    assert seq[:4] == [(1.0, [a.id]), (1.0, [a.id, b.id]), (1.0, [a.id]), (LIVE_SPEED, [])]
+
+
+def test_spotlights_and_full_time_never_hold():
+    run = run_with()
+
+    async def ask(r: LiveRun) -> None:
+        await r.spotlight("RMU-33")
+
+    run.skip()
+    asyncio.run(drain(run, before=ask))
+    full_time = KEY[-1]
+    assert full_time.kind == "full_time"
+    held = {mid for _, p in paces(run) for mid in p.data.holding}
+    assert not any(mid.startswith("spotlight-") for mid in held) and full_time.id not in held
+
+
+def test_extra_versions_never_hold(monkeypatch):
+    from jahbadh.api import live
+    first = KEY[0]
+    held_desk(monkeypatch, {})
+    release = asyncio.Event()
+
+    async def slow_render(desk, item, persona, language):
+        await release.wait()
+        return [], []
+
+    monkeypatch.setattr(live, "render_combo", slow_render)
+    run = None
+
+    async def sleep(s: float) -> None:
+        if run.clock >= first.t + 30:
+            release.set()
+
+    run = run_with(sleep)
+    for p, lang in EXTRA_COMBOS:
+        run.add_combo(p, lang)
+    asyncio.run(drain(run))
+    feed = index_of(run, "feed", first.id)
+    back = next((n, p) for n, p in paces(run) if n > feed)
+    assert back[1].data.holding == [] and back[1].t <= run.history[feed].t + 1
+    renders = [n for n, i in enumerate(run.history) if i.kind == "renders" and i.data.moment_id == first.id]
+    assert renders and back[0] < renders[0]
+
+
+def test_cancel_during_a_hold_ends_cleanly(monkeypatch):
+    first = KEY[0]
+    held_desk(monkeypatch, {first.id: asyncio.Event()})          # never set: the line never comes
+    run = None
+    cancelling: list[asyncio.Task] = []
+
+    async def sleep(s: float) -> None:
+        if run.clock >= first.t + 3 and not cancelling:
+            cancelling.append(asyncio.ensure_future(run.cancel()))
+
+    run = run_with(sleep)
+    asyncio.run(drain(run))
+    assert run.history[-1].kind == "end" and run.history[-1].data.reason == "cancelled"
+    assert run._holds == {}

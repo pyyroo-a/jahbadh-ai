@@ -61,6 +61,8 @@ def empty_match(run_id: str, start: IngestStart) -> Match:
 
 
 class IngestRun(LiveRun):
+    HOLDS = False                                 # an outside feed sets its own pace
+
     def __init__(self, run_id: str, match: Match, desk: Desk | None, now: Callable[[], float] = time.monotonic,
                  idle_s: float = LIVE_IDLE_S, stale_s: float = INGEST_STALE_S):
         model = (getattr(desk.client, "model", None) or type(desk.client).__name__) if desk else "template lines only"
