@@ -21,6 +21,7 @@ from jahbadh.agents.contracts import FeedItem, Language, Moment, MomentFailure, 
 from jahbadh.agents.desk import Desk
 from jahbadh.agents.moments import detect_moments
 from jahbadh.agents.spotlight import spotlight_moment
+from jahbadh.api.gate import PriorityGate
 from jahbadh.api.overlay import claim_cues
 from jahbadh.api.replay import Sleep
 from jahbadh.api.stream import MatchInfo, RendersUpdate, StreamEnd, StreamItem
@@ -67,7 +68,7 @@ class LiveRun:
         self._tasks: set[asyncio.Task] = set()        # moments and combo renders still working
         self._english: dict[tuple[str, str], asyncio.Task] = {}   # (moment, persona): its English, rendered once
         self._closing = False                         # cancel() has begun: nothing new may start
-        self._gate: asyncio.Semaphore | None = None
+        self._gate: PriorityGate | None = None       # the desk's own moments go ahead of extra versions
         self._changed: asyncio.Event | None = None    # set on every append, wakes the viewers
         self._wake: asyncio.Event | None = None       # set by skip, cuts the pacing sleep short
         self._runner: asyncio.Task | None = None
@@ -78,7 +79,7 @@ class LiveRun:
 
     def _events(self) -> tuple[asyncio.Event, asyncio.Event]:
         if self._changed is None:
-            self._changed, self._wake, self._gate = asyncio.Event(), asyncio.Event(), asyncio.Semaphore(LIVE_CONCURRENCY)
+            self._changed, self._wake, self._gate = asyncio.Event(), asyncio.Event(), PriorityGate(LIVE_CONCURRENCY)
         return self._changed, self._wake
 
     def _append(self, item: StreamItem) -> None:
@@ -195,7 +196,7 @@ class LiveRun:
         self._spawn(self._work(moment))
 
     async def _work(self, moment: Moment) -> None:
-        async with self._gate:
+        async with self._gate.slot(first=True):
             try:
                 item = await pipeline.run_moment(self.desk, moment)
             except Exception as e:  # one bad moment (rate limit, bad reply) must never stop the match
@@ -219,7 +220,7 @@ class LiveRun:
         return self._english[key]
 
     async def _render(self, item: FeedItem, persona: Persona, language: Language) -> None:
-        async with self._gate:
+        async with self._gate.slot(first=False):
             try:
                 renders, rejections = await asyncio.shield(self._persona_english(item, persona))
                 if language != "en":       # translate the shared English, so every version says the same thing

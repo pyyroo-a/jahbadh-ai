@@ -336,6 +336,35 @@ def test_combos_with_one_persona_share_its_english(monkeypatch):
     assert len(arabic) == 16 and all(has for _, _, has in arabic)            # each starts from the shared English
 
 
+def test_a_key_moment_is_not_stuck_behind_extra_versions(monkeypatch):
+    from jahbadh.agents.contracts import Claim, FeedItem
+    from jahbadh.api import live
+    started: list[tuple[str, str]] = []
+
+    async def publish(desk, moment, on_step=None):
+        started.append(("moment", moment.id))
+        claim = Claim(id=f"{moment.id}:c1", text=f"{moment.label}.", metric_ids=[], event_ids=list(moment.event_ids),
+                      figures=[])
+        return FeedItem(moment=moment, claims=[claim], renders=[], rejections=[], metrics=[], stats={}, latency_s=0.0)
+
+    async def slow_render(desk, item, persona, language):
+        started.append(("render", item.moment.id))
+        for _ in range(200):                    # long enough for the next key moment to arrive meanwhile
+            await asyncio.sleep(0)
+        return [], []
+
+    monkeypatch.setattr(pipeline, "run_moment", publish)
+    monkeypatch.setattr(live, "render_combo", slow_render)
+    monkeypatch.setattr(live, "LIVE_CONCURRENCY", 1)
+    run = run_with()
+    for p, lang in EXTRA_COMBOS:
+        run.add_combo(p, lang)
+    asyncio.run(drain(run))
+    first, second = [m.id for m in key_moments(DEMO)[:2]]
+    before_second = started[:started.index(("moment", second))]
+    assert before_second.count(("render", first)) < 8
+
+
 def test_live_start_builds_the_timeline_off_the_event_loop(monkeypatch):
     import threading
 
