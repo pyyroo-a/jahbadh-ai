@@ -159,6 +159,23 @@ export interface RendersUpdate {
   rejections: Rejection[];
 }
 
+/** One of the desk's steps finished for a moment, at match second t (live and ingest). Persona and Localize
+ *  are part of publish. */
+export type DeskStep = "analyst" | "tactical" | "writer" | "referee" | "rewrite" | "recheck" | "publish";
+
+export interface StepUpdate {
+  moment_id: string;
+  step: DeskStep;
+  t: number;
+}
+
+/** From match second t the clock runs at `speed`; `holding` names the key moments slowing it, earliest first. */
+export interface PaceUpdate {
+  t: number;
+  speed: number;
+  holding: string[];
+}
+
 export interface StreamEnd {
   reason: "full_time" | "cancelled";
 }
@@ -252,7 +269,9 @@ export type StreamMessage = { id: number } & (
   | { kind: "renders"; data: RendersUpdate }
   | { kind: "cue"; data: OverlayCue }
   | { kind: "end"; data: StreamEnd }
+  | { kind: "step"; data: StepUpdate }
+  | { kind: "pace"; data: PaceUpdate }
 );
 
 export type StreamKind = StreamMessage["kind"];
-export const STREAM_KINDS: StreamKind[] = ["match", "event", "state", "thinking", "feed", "failure", "renders", "cue", "end"];
+export const STREAM_KINDS: StreamKind[] = ["match", "event", "state", "thinking", "feed", "failure", "renders", "cue", "end", "step", "pace"];

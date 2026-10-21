@@ -168,3 +168,36 @@ describe("comboWaiting", () => {
     expect(comboWaiting(asked, item("goal-885", 885, { renders: [r("casual", "ar", "نص")] }), "casual", "ar", false)).toBe(false);
   });
 });
+
+describe("reduce: the live pace and the desk's steps", () => {
+  const pace = (t: number, speed: number, holding: string[]) => ({ t, speed, holding });
+  const step = (moment_id: string, s: string, t: number) => ({ moment_id, step: s, t });
+
+  it("keeps the latest pace and drops it at the end", () => {
+    let s = reduce(withMatch(), msg(1, "pace", pace(885, 1, ["goal-885"])));
+    expect(s.pace).toEqual(pace(885, 1, ["goal-885"]));
+    expect(s.clock).toBe(885);
+    s = reduce(s, msg(2, "end", { reason: "full_time" }));
+    expect(s.pace).toBeNull();
+  });
+
+  it("keeps each moment's steps once, in order", () => {
+    let s = reduce(withMatch(), msg(1, "step", step("goal-885", "analyst", 890)));
+    s = reduce(s, msg(2, "step", step("goal-885", "tactical", 895)));
+    s = reduce(s, msg(3, "step", step("goal-885", "tactical", 896)));
+    expect(s.steps["goal-885"].map((x) => x.step)).toEqual(["analyst", "tactical"]);
+    expect(s.clock).toBe(896);
+  });
+
+  it("a reconnect burst ends on the latest pace", () => {
+    const burst = [
+      msg(0, "match", { ...info, mode: "live" }), msg(1, "thinking", moment("goal-885")),
+      msg(2, "pace", pace(885, 1, ["goal-885"])), msg(3, "step", step("goal-885", "analyst", 900)),
+      msg(4, "step", step("goal-885", "publish", 941)), msg(5, "feed", item("goal-885")),
+      msg(6, "pace", pace(942, 6, [])),
+    ];
+    const s = burst.reduce(reduce, initialDesk);
+    expect(s.pace).toEqual(pace(942, 6, []));
+    expect(s.thinking).toEqual([]);
+  });
+});

@@ -2,8 +2,8 @@
 // computes a football number itself.
 
 import type {
-  EventLine, FeedItem, Language, MatchInfo, MatchState, Moment, MomentFailure, OverlayCue, Persona, Rejection, RenderedClaim,
-  StreamEnd, StreamMessage,
+  EventLine, FeedItem, Language, MatchInfo, MatchState, Moment, MomentFailure, OverlayCue, PaceUpdate, Persona, Rejection,
+  RenderedClaim, StepUpdate, StreamEnd, StreamMessage,
 } from "../api/types";
 
 export type DeskState = {
@@ -19,10 +19,13 @@ export type DeskState = {
   clock: number;                      // the latest match second any message has reached
   ended: StreamEnd | null;
   lastId: number;
+  pace: PaceUpdate | null;            // live: the pace now, and the key moments slowing it
+  steps: Record<string, StepUpdate[]>; // live and ingest: each moment's finished desk steps, in order
 };
 
 export const initialDesk: DeskState = {
   info: null, events: [], eventsById: {}, state: null, states: [], thinking: [], items: [], failures: [], cues: [], clock: 0, ended: null, lastId: -1,
+  pace: null, steps: {},
 };
 
 const renderKey = (r: RenderedClaim) => `${r.claim_id}|${r.persona}|${r.language}`;
@@ -60,7 +63,14 @@ export function reduce(s: DeskState, m: StreamMessage): DeskState {
       return { ...next, items };
     }
     case "end":
-      return { ...next, ended: m.data, thinking: [] };
+      return { ...next, ended: m.data, thinking: [], pace: null };
+    case "pace":
+      return { ...next, pace: m.data, clock: Math.max(s.clock, m.data.t) };
+    case "step": {
+      const have = s.steps[m.data.moment_id] ?? [];
+      const steps = have.some((x) => x.step === m.data.step) ? have : [...have, m.data];
+      return { ...next, steps: { ...s.steps, [m.data.moment_id]: steps }, clock: Math.max(s.clock, m.data.t) };
+    }
     case "cue":
       return { ...next, cues: [...s.cues, m.data], clock: Math.max(s.clock, m.data.match_time) };
   }

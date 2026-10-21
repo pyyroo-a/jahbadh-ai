@@ -24,6 +24,7 @@ import { layoutFor } from "./state/layout";
 import { activeCues, tickingClock } from "./state/overlay";
 import { claimTags, inFocus, rankClaims, type Mode } from "./state/personal";
 import { followFirst } from "./state/players";
+import { clockSpeed } from "./state/slowdown";
 import { usePhone } from "./state/usePhone";
 
 export default function App() {
@@ -80,7 +81,7 @@ export default function App() {
     const id = setInterval(() => setNow(performance.now()), 250);
     return () => clearInterval(id);
   }, [overlayOn]);
-  const onAir = tickingClock(clock, heardAt, Math.max(now, heardAt), info?.speed ?? 6, !desk.ended);
+  const onAir = tickingClock(clock, heardAt, Math.max(now, heardAt), clockSpeed(desk), !desk.ended);
   const minute = events.length ? events[events.length - 1].minute : state?.minute ?? 1;
   const choices = useMemo(() => config?.metric_choices ?? [], [config]);
 
