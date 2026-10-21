@@ -68,7 +68,7 @@ def test_event_line_payload_keys_are_the_protocol():
     line = event_line(m, m.event(2))
     assert isinstance(line, EventLine) and line.lines["en"] == "Marek Quill finds Quinn Yilmaz" and line.minute == 1
     assert set(line.model_dump()) == {"id", "t", "minute", "type", "team_id", "player_id", "related_player_id",
-                                      "x", "y", "end_x", "end_y", "outcome", "xg", "speed_kmh", "lines"}
+                                      "x", "y", "end_x", "end_y", "outcome", "xg", "speed_kmh", "lines", "buildup"}
 
 
 def test_match_state_payload_keys_are_the_protocol():

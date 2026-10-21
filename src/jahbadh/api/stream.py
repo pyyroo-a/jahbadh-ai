@@ -44,6 +44,7 @@ class EventLine(BaseModel):
     xg: float | None
     speed_kmh: float | None           # synthetic ball speed, on passes and shots only
     lines: dict[Language, str]
+    buildup: list["EventLine"] | None = None    # goals only: the move's steps in order, the shot last
 
 
 class MatchState(BaseModel):

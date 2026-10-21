@@ -9,11 +9,12 @@ cue follows its feed item at the same second, so a graphics client never shows a
 
 from jahbadh import analytics as an
 from jahbadh.agents.evidence import formation_at, score_at
+from jahbadh.api.buildup import goal_buildup
 from jahbadh.api.lines import event_lines
 from jahbadh.api.overlay import claim_cues, event_cues, metric_cues
 from jahbadh.api.showcase import Showcase
 from jahbadh.api.stream import EventLine, MatchState, StreamEnd, StreamItem
-from jahbadh.schemas import Event, Match
+from jahbadh.schemas import Event, EventType, Match
 
 REPLAY_DESK_LAG_S = 20.0
 STATE_STEP_S = 60
@@ -50,10 +51,11 @@ def match_state(match: Match, t: float) -> MatchState:
 
 
 def event_line(match: Match, e: Event) -> EventLine:
+    buildup = [event_line(match, s) for s in goal_buildup(match.events, e)] if e.type == EventType.GOAL else None
     return EventLine(id=e.id, t=e.t, minute=e.minute, type=e.type, team_id=e.team_id, player_id=e.player_id,
                      related_player_id=e.related_player_id, x=e.x, y=e.y, end_x=e.end_x, end_y=e.end_y,
                      outcome=e.outcome, xg=e.xg, speed_kmh=e.detail.get("speed_kmh") if e.type in ("PASS", "SHOT") else None,
-                     lines=event_lines(match, e))
+                     lines=event_lines(match, e), buildup=buildup)
 
 
 def _order(i: StreamItem) -> int:
