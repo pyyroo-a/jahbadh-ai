@@ -14,12 +14,14 @@ type Props = {
   language: Language;
   tactical: ReactNode;                    // the tactical view, folded into a card
   tacticalOpen: boolean;                  // open it while a desk line's evidence is on the pitch
+  tacticalHint?: string | null;           // a new goal's build-up, glowing on the folded card
+  onTacticalOpen?: () => void;            // opened while the hint showed: play that goal
   renderItem: (item: DeskState["items"][number]) => ReactNode;
   banner?: ReactNode;                     // live: the desk review strip while the match is slowed
 };
 
 /** The casual fan on a phone: momentum, the folded tactical view, then one woven feed of desk lines and events. */
-export default function FanLayout({ desk, language, tactical, tacticalOpen, renderItem, banner }: Props) {
+export default function FanLayout({ desk, language, tactical, tacticalOpen, tacticalHint, onTacticalOpen, renderItem, banner }: Props) {
   const [limit, setLimit] = useState(STEP);
   const keyEvents = visibleEvents(desk.events, "key", new Set(), desk.events.length).reverse();
   const entries = weaveFeed(keyEvents, desk.items, limit);
@@ -28,7 +30,7 @@ export default function FanLayout({ desk, language, tactical, tacticalOpen, rend
     <main className="phone-stack">
       {banner}
       {desk.info && <MomentumBar info={desk.info} momentum={desk.state?.momentum ?? null} />}
-      <TacticalCard forcedOpen={tacticalOpen}>{tactical}</TacticalCard>
+      <TacticalCard forcedOpen={tacticalOpen} hint={tacticalHint} onOpen={onTacticalOpen}>{tactical}</TacticalCard>
       <section className="column happening">
         <h2>{FEED_LABELS.happening}</h2>
         {desk.info && speedNote(desk.info) && <div className="note">{speedNote(desk.info)}</div>}

@@ -13,6 +13,8 @@ type Props = {
   phone: boolean;
   tactical: ReactNode;
   tacticalOpen: boolean;
+  tacticalHint?: string | null;           // a new goal's build-up, glowing on the folded card
+  onTacticalOpen?: () => void;            // opened while the hint showed: play that goal
   feed: ReactNode;
 };
 
@@ -35,13 +37,13 @@ function Numbers({ desk, info }: { desk: DeskState; info: MatchInfo }) {
 }
 
 /** The studio pundit's dense view: the numbers, the pitch and the feed with its evidence on show. */
-export default function AnalystLayout({ desk, info, phone, tactical, tacticalOpen, feed }: Props) {
+export default function AnalystLayout({ desk, info, phone, tactical, tacticalOpen, tacticalHint, onTacticalOpen, feed }: Props) {
   if (phone) {
     return (
       <main className="phone-stack">
         <Numbers desk={desk} info={info} />
         {feed}
-        <TacticalCard forcedOpen={tacticalOpen}>{tactical}</TacticalCard>
+        <TacticalCard forcedOpen={tacticalOpen} hint={tacticalHint} onOpen={onTacticalOpen}>{tactical}</TacticalCard>
       </main>
     );
   }

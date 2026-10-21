@@ -21,7 +21,7 @@ import { comboWaiting, initialDesk, reduce, replaySkip } from "./state/desk";
 import type { Selection } from "./state/evidence";
 import { freshGoal, goalChips, goalOfItem, newestUnwatched, pickReplay } from "./state/goals";
 import { highlights } from "./state/highlights";
-import { COMBO_NOTICES, WATCH_LABELS } from "./state/labels";
+import { COMBO_NOTICES, GOAL_LABELS, WATCH_LABELS } from "./state/labels";
 import { layoutFor } from "./state/layout";
 import { activeCues, tickingClock } from "./state/overlay";
 import { claimTags, inFocus, rankClaims, type Mode } from "./state/personal";
@@ -186,7 +186,10 @@ export default function App() {
   });
   const replayGoal = goalId === null ? null : desk.eventsById[goalId] ?? null;      // a goal the stream no longer has plays nothing
   const replay = replayGoal ? { goal: replayGoal, nonce: request?.nonce ?? 0 } : null;
-  const glowId = newestUnwatched(chips, watched)?.goalId ?? null;
+  const glowing = newestUnwatched(chips, watched);
+  const glowId = glowing?.goalId ?? null;
+  const card = { tacticalHint: glowing ? GOAL_LABELS.cardHint(glowing.minute) : null,      // the folded phone card
+    onTacticalOpen: () => glowing && onChip(glowing.goalId) };
   const onChip = (id: number) => setRequest((r) => ({ goalId: id, nonce: (r?.nonce ?? 0) + 1 }));
   const onReplayDone = (id: number) => {
     setWatched((w) => new Set(w).add(id));
@@ -237,10 +240,10 @@ export default function App() {
       <HighlightsStrip strip={strip} onPick={pickMoment} />
       {problem && !desk.ended && <div className="notice">{problem}</div>}
       {phone && layout === "fan" ? (
-        <FanLayout desk={desk} language={language} tactical={tacticalView} tacticalOpen={selection !== null} banner={banner}
+        <FanLayout desk={desk} language={language} tactical={tacticalView} tacticalOpen={selection !== null} banner={banner} {...card}
           renderItem={(item) => <Moment item={item} {...feedProps} />} />
       ) : layout === "analyst" && info ? (
-        <AnalystLayout desk={desk} info={info} phone={phone} tactical={tacticalView} tacticalOpen={selection !== null}
+        <AnalystLayout desk={desk} info={info} phone={phone} tactical={tacticalView} tacticalOpen={selection !== null} {...card}
           feed={<DeskFeed {...feedProps} notice={notice} />} />
       ) : layout === "watch" && info ? (
         <PlayerWatchLayout desk={desk} info={info} phone={phone} clock={clock} runId={runId} runKind={runKind}

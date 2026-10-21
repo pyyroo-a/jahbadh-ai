@@ -260,6 +260,8 @@ body { margin: 0; min-height: 100vh; background: var(--bg); }
 .tactical-card summary { display: flex; flex-direction: column; gap: 2px; cursor: pointer; list-style: none; }
 .tactical-card summary::-webkit-details-marker { display: none; }
 .tactical-card[open] summary { margin-bottom: 8px; }
+.card-hint { align-self: flex-start; font-size: 12px; color: var(--text); border: 1px solid var(--home); border-radius: 999px;
+  padding: 2px 10px; box-shadow: 0 0 0 2px var(--amber); }
 .tactical-card .column { border: 0; padding: 0; max-height: none; background: transparent; }
 .happening { max-height: none; }
 .happening-event {
