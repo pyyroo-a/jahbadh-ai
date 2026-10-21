@@ -19,6 +19,7 @@ import TacticalView from "./components/TacticalView";
 import TopBar from "./components/TopBar";
 import { comboWaiting, initialDesk, reduce, replaySkip } from "./state/desk";
 import type { Selection } from "./state/evidence";
+import { freshGoal, goalChips, goalOfItem, newestUnwatched, pickReplay } from "./state/goals";
 import { highlights } from "./state/highlights";
 import { COMBO_NOTICES, WATCH_LABELS } from "./state/labels";
 import { layoutFor } from "./state/layout";
@@ -44,6 +45,10 @@ export default function App() {
   const [liveRemaining, setLiveRemaining] = useState(0);
   const [overlayOn, setOverlayOn] = useState(false);
   const [heardAt, setHeardAt] = useState(0);              // real time of the last stream message
+  const [watched, setWatched] = useState<Set<number>>(new Set());      // goals whose build-up has played
+  const [request, setRequest] = useState<{ goalId: number; nonce: number } | null>(null);   // a tapped goal chip
+  const [lineDone, setLineDone] = useState<string | null>(null);      // the selected line whose replay has played
+  const [goalsOf, setGoalsOf] = useState<string | null>(null);        // the match those three belong to
   const phone = usePhone();
 
   useEffect(() => {
@@ -163,6 +168,32 @@ export default function App() {
     if (item?.claims[0]) setSelection({ momentId, claimId: item.claims[0].id });
   };
 
+  // Goal replays. A new match starts the watched goals over (event ids repeat across matches); a speed change or a
+  // skip keeps them, so a goal never replays by itself twice.
+  const matchId = info?.match_id ?? null;
+  if (goalsOf !== matchId) {
+    setGoalsOf(matchId);
+    setWatched(new Set());
+    setRequest(null);
+    setLineDone(null);
+  }
+  const chips = useMemo(() => (info ? goalChips(events, info) : []), [events, info]);
+  const selectionKey = selection ? `${selection.momentId}|${selection.claimId}` : null;
+  const lineGoal = selected ? goalOfItem(selected.item, desk.eventsById) : null;
+  const goalId = pickReplay({
+    request: request?.goalId ?? null, lineGoal: lineGoal?.id ?? null, lineDone: lineDone !== null && lineDone === selectionKey,
+    fresh: freshGoal(events, clock)?.id ?? null, watched, overview: selected === null, phone,
+  });
+  const replayGoal = goalId === null ? null : desk.eventsById[goalId] ?? null;      // a goal the stream no longer has plays nothing
+  const replay = replayGoal ? { goal: replayGoal, nonce: request?.nonce ?? 0 } : null;
+  const glowId = newestUnwatched(chips, watched)?.goalId ?? null;
+  const onChip = (id: number) => setRequest((r) => ({ goalId: id, nonce: (r?.nonce ?? 0) + 1 }));
+  const onReplayDone = (id: number) => {
+    setWatched((w) => new Set(w).add(id));
+    setRequest(null);
+    if (selectionKey) setLineDone(selectionKey);
+  };
+
   const layout = layoutFor(persona);
   const calm = layout === "fan", detail = layout === "analyst";
   const feedProps = { desk, persona, language, selection, onSelect: setSelection, waiting, mode, choices, calm, detail };
@@ -175,6 +206,7 @@ export default function App() {
             overlayControls={<OverlayPreview on={overlayOn} onToggle={() => setOverlayOn(!overlayOn)}
               feedUrl={liveRunId ? `/api/live/${liveRunId}/overlay` : source?.kind === "ingest" ? null : `/api/replay/${info.match_id}/overlay`} />}
             onOverview={() => setSelection(null)} calm={calm} banner={phone ? null : banner}
+            language={language} replay={replay} chips={chips} glowId={glowId} onChip={onChip} onReplayDone={onReplayDone}
             onPitch={overlayOn && <LowerThirds cues={activeCues(desk.cues, onAir)} language={language} info={info} />}>
             {mode.kind === "player" && (
               <FollowPanel key={mode.playerId} info={info} playerId={mode.playerId} clock={clock} runId={runId} runKind={runKind}

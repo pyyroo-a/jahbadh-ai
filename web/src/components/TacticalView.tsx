@@ -1,9 +1,13 @@
 import type { ReactNode } from "react";
-import type { Claim, EventLine, FeedItem, MatchInfo, MatchState, Metric } from "../api/types";
-import { type Layer, eventLayer, metricLayer } from "../pitch/layers";
+import type { Claim, EventLine, FeedItem, Language, MatchInfo, MatchState, Metric } from "../api/types";
+import { type Layer, eventLayer, metricLayer, replaySteps } from "../pitch/layers";
 import { evidenceOf } from "../state/evidence";
 import { formatMetric } from "../state/format";
+import { type GoalChip, stepMs } from "../state/goals";
+import { GOAL_LABELS } from "../state/labels";
 import type { Mode } from "../state/personal";
+import GoalChips from "./GoalChips";
+import { ReplayDrawing, ReplaySteps } from "./GoalReplay";
 import MetricTiles, { type Tile } from "./MetricTiles";
 import MomentumBar from "./MomentumBar";
 import Pitch from "./Pitch";
@@ -21,6 +25,12 @@ type Props = {
   onPitch?: ReactNode;             // drawn over the pitch: the overlay's lower-thirds
   onOverview?: () => void;         // leaves a claim's evidence for the formations
   calm?: boolean;                  // the Fan view: tiles only for a selected line's evidence
+  language: Language;
+  replay: { goal: EventLine; nonce: number } | null;    // the goal whose build-up is playing
+  chips: GoalChip[];
+  glowId: number | null;           // the newest goal, while unwatched
+  onChip: (goalId: number) => void;
+  onReplayDone: (goalId: number) => void;
 };
 
 const ppda = (v: number | null | undefined) => (typeof v === "number" ? v.toFixed(1) : "no data");
@@ -35,7 +45,8 @@ function overviewTiles(info: MatchInfo, state: MatchState | null, mode: Mode): T
   return [...tiles, { key: "xg", value: xg, label: "xG", sub: `${info.home.id} - ${info.away.id}, so far` }];
 }
 
-export default function TacticalView({ info, state, selected, eventsById, mode, heatmap, children, overlayControls, onPitch, onOverview, calm, banner }: Props) {
+export default function TacticalView({ info, state, selected, eventsById, mode, heatmap, children, overlayControls, onPitch,
+  onOverview, calm, banner, language, replay, chips, glowId, onChip, onReplayDone }: Props) {
   let layers: Layer[];
   let tiles: Tile[];
   let title = "Tactical view";
@@ -52,6 +63,13 @@ export default function TacticalView({ info, state, selected, eventsById, mode, 
     if (heatmap) layers = [metricLayer(heatmap, info), ...layers];
     tiles = calm ? [] : overviewTiles(info, state, mode);
   }
+  const moves = replay ? replay.goal.buildup ?? [replay.goal] : [];
+  const ms = stepMs(moves.length);
+  const replayKey = replay ? `${replay.goal.id}-${replay.nonce}` : "";
+  if (replay && !selected) {
+    title = GOAL_LABELS.title(replay.goal.minute);
+    layers = [];                                // the move alone, without the formations
+  }
   return (
     <section className="column tactical">
       <div className="column-head"><h2>{title}</h2>{overlayControls}</div>
@@ -60,10 +78,17 @@ export default function TacticalView({ info, state, selected, eventsById, mode, 
         <button type="button" className="link" onClick={onOverview}>Back to the overview</button>
       )}
       <div className="pitch-wrap">
-        <Pitch info={info} layers={layers} arrows={drawn.arrows} points={drawn.points} />
+        <Pitch info={info} layers={layers} arrows={drawn.arrows} points={drawn.points}>
+          {replay && <ReplayDrawing key={replayKey} steps={replaySteps(moves, info)} info={info} ms={ms} />}
+        </Pitch>
         {onPitch}
         {banner}
       </div>
+      {replay && (
+        <ReplaySteps key={replayKey} steps={moves} language={language} ms={ms}
+          note={selected ? GOAL_LABELS.fromData(replay.goal.minute) : null} onDone={() => onReplayDone(replay.goal.id)} />
+      )}
+      <GoalChips chips={chips} glowId={glowId} onPick={onChip} info={info} />
       <div className="note">{info.home.name} attack left to right.</div>
       {!selected && <MomentumBar info={info} momentum={state?.momentum ?? null} />}
       <MetricTiles tiles={tiles} />

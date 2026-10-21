@@ -1,8 +1,9 @@
+import type { ReactNode } from "react";
 import type { MatchInfo } from "../api/types";
 import { LENGTH, WIDTH } from "../pitch/coords";
 import type { Arrow, Layer, Point } from "../pitch/layers";
 
-type Props = { info: MatchInfo; layers: Layer[]; arrows?: Arrow[]; points?: Point[] };
+type Props = { info: MatchInfo; layers: Layer[]; arrows?: Arrow[]; points?: Point[]; children?: ReactNode };
 
 const colour = (info: MatchInfo, team: string) => (team === info.home.id ? "var(--home)" : "var(--away)");
 
@@ -26,9 +27,9 @@ function LayerShapes({ info, layer }: { info: MatchInfo; layer: Layer }) {
   switch (layer.kind) {
     case "heat": {
       const top = Math.max(...layer.cells.map((c) => c.v));
-      return <g filter="url(#heat-smooth)">{layer.cells.map((c, i) => (
+      return <g clipPath="url(#pitch-edge)"><g filter="url(#heat-smooth)">{layer.cells.map((c, i) => (
         <rect key={i} x={c.x} y={c.y} width={c.w} height={c.h} fill={colour(info, layer.team)} opacity={0.15 + 0.7 * (c.v / top)} />
-      ))}</g>;
+      ))}</g></g>;
     }
     case "dots":
       return <g>{layer.dots.map((d, i) => (
@@ -69,22 +70,31 @@ function LayerShapes({ info, layer }: { info: MatchInfo; layer: Layer }) {
   }
 }
 
-export default function Pitch({ info, layers, arrows = [], points = [] }: Props) {
+export default function Pitch({ info, layers, arrows = [], points = [], children }: Props) {
   return (
     <svg className="pitch" viewBox={`0 0 ${LENGTH} ${WIDTH}`} preserveAspectRatio="xMidYMid meet" role="img" aria-label="Tactical pitch">
       <defs>
         <marker id="arrow" markerWidth="4" markerHeight="4" refX="3" refY="2" orient="auto">
           <path d="M0,0 L4,2 L0,4 z" className="arrow-head" />
         </marker>
+        {/* a goal replay's heads, one per colour: a marker can't take its line's colour everywhere */}
+        {["home", "away", "shot"].map((k) => (
+          <marker key={k} id={`replay-${k}`} markerWidth="4" markerHeight="4" refX="3" refY="2" orient="auto">
+            <path d="M0,0 L4,2 L0,4 z" className={`replay-head ${k}`} />
+          </marker>
+        ))}
         {/* heatmaps are smoothed only when drawn: the cells and their numbers stay exactly the same */}
         <filter id="heat-smooth" x="-5%" y="-5%" width="110%" height="110%">
           <feGaussianBlur stdDeviation="1.2" />
         </filter>
+        {/* the pitch draws past its edge (a goal's move can run along the goal line); the heatmap's blur stays in */}
+        <clipPath id="pitch-edge"><rect x={0} y={0} width={LENGTH} height={WIDTH} /></clipPath>
       </defs>
       <Markings />
       {layers.map((layer, i) => <LayerShapes key={i} info={info} layer={layer} />)}
       {arrows.map((a) => <line key={a.id} x1={a.x1} y1={a.y1} x2={a.x2} y2={a.y2} className="event-arrow" markerEnd="url(#arrow)" />)}
       {points.map((p) => <circle key={p.id} cx={p.x} cy={p.y} r={1.1} className="event-point" />)}
+      {children}
     </svg>
   );
 }

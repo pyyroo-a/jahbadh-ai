@@ -26,7 +26,7 @@ export const COMBO_NOTICES = {
 export const GOAL_LABELS = {
   row: "Goal build-ups",
   title: (minute: number) => `How the ${minute}' goal was built`,
-  fromData: "The move, from the match data",
+  fromData: (minute: number) => `The ${minute}' goal's move, from the match data`,
   noBuildUp: "No passes or carries before the shot in this move.",
   cardHint: (minute: number) => `${minute}' goal build-up`,
 };

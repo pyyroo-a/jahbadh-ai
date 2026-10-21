@@ -139,7 +139,7 @@ body { margin: 0; min-height: 100vh; background: var(--bg); }
 
 /* Tactical view */
 .tactical { overflow-y: auto; }
-.pitch { display: block; width: 100%; height: auto; aspect-ratio: 105 / 68; margin-top: 4px; background: var(--pitch); border-radius: 8px; }
+.pitch { display: block; width: 100%; height: auto; aspect-ratio: 105 / 68; margin-top: 4px; background: var(--pitch); border-radius: 8px; overflow: visible; }
 .markings { fill: none; stroke: var(--line); stroke-width: 0.35; }
 .markings .spot { fill: var(--line); }
 .dot-label { font-size: 1.8px; font-weight: 700; fill: var(--text); text-anchor: middle; pointer-events: none; }
@@ -148,6 +148,40 @@ body { margin: 0; min-height: 100vh; background: var(--bg); }
 .event-arrow { stroke: var(--amber); stroke-width: 0.5; }
 .arrow-head { fill: var(--amber); }
 .event-point { fill: var(--amber); stroke: var(--bg); stroke-width: 0.25; }
+
+/* a goal's build-up, replayed: each step appears in turn, passes and the shot draw themselves */
+.replay-step { opacity: 0; animation-name: replay-show; animation-fill-mode: forwards; }
+.replay-pass, .replay-shot { stroke-dasharray: 1; stroke-dashoffset: 1; animation-name: replay-draw; animation-fill-mode: forwards; }
+.replay-pass { stroke-width: 0.6; }
+.replay-carry { stroke-width: 0.5; stroke-dasharray: 1 0.8; }
+.replay-shot { stroke: var(--amber); stroke-width: 0.9; }
+.replay-pass.home, .replay-carry.home { stroke: var(--home); }
+.replay-pass.away, .replay-carry.away { stroke: var(--away); }
+.replay-head.home, .replay-point.home, .replay-who.home { fill: var(--home); }
+.replay-head.away, .replay-point.away, .replay-who.away { fill: var(--away); }
+.replay-head.shot, .replay-shot-spot { fill: var(--amber); }
+.replay-point, .replay-who { stroke: var(--bg); stroke-width: 0.25; }
+.replay-who-label { font-size: 1.7px; font-weight: 700; fill: var(--bg); text-anchor: middle; pointer-events: none; }
+.replay-steps { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; font-size: 12px; }
+.replay-steps li { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 3px 7px;
+  opacity: 0.35; animation-name: replay-lit; animation-fill-mode: forwards; }
+.replay-steps li b { color: var(--amber); }
+.replay-hold { display: block; height: 0; overflow: hidden; animation-name: replay-hold; }
+@keyframes replay-show { to { opacity: 1; } }
+@keyframes replay-draw { to { stroke-dashoffset: 0; } }
+@keyframes replay-lit { to { opacity: 1; border-color: var(--amber); } }
+@keyframes replay-hold { from { opacity: 0; } to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .replay-step, .replay-pass, .replay-shot, .replay-steps li { animation: none; opacity: 1; stroke-dashoffset: 0; }
+  .replay-steps li { border-color: var(--amber); }
+}
+.goal-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
+.goal-chips .tag { margin: 0; }
+.goal-chip { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 999px;
+  padding: 3px 10px; font: inherit; font-size: 12px; cursor: pointer; }
+.goal-chip.home { border-color: var(--home); }
+.goal-chip.away { border-color: var(--away); }
+.goal-chip.glow { box-shadow: 0 0 0 2px var(--amber); }
 .momentum { margin-top: 10px; }
 .momentum-label { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
 .momentum-bar { display: flex; height: 12px; border-radius: 4px; overflow: hidden; background: var(--away); }
