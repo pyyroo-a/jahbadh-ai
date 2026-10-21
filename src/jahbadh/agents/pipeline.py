@@ -10,6 +10,7 @@ fails too it is dropped. Every rejection is kept, because the UI shows them on p
 
 import asyncio
 import time
+from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Never
 
@@ -17,7 +18,7 @@ from agent_framework import Executor, Workflow, WorkflowBuilder, WorkflowContext
 from pydantic import BaseModel
 
 from jahbadh.agents.analysts import analyse, explain
-from jahbadh.agents.contracts import (Claim, DeskRun, FeedItem, Finding, Moment, MomentFailure, Rejection,
+from jahbadh.agents.contracts import (Claim, DeskRun, DeskStep, FeedItem, Finding, Moment, MomentFailure, Rejection,
                                       RenderedClaim)
 from jahbadh.agents.desk import Desk, MomentRun
 from jahbadh.agents.llm import AgentOutputError
@@ -48,13 +49,16 @@ class _Step(Executor):
 class AnalystStep(_Step):
     @handler
     async def handle(self, state: MomentState, ctx: WorkflowContext[MomentState]) -> None:
-        await ctx.send_message(state.model_copy(update={"findings": await analyse(self.run)}))
+        findings = await analyse(self.run)
+        self.run.report("analyst")
+        await ctx.send_message(state.model_copy(update={"findings": findings}))
 
 
 class TacticalStep(_Step):
     @handler
     async def handle(self, state: MomentState, ctx: WorkflowContext[MomentState]) -> None:
         found = await explain(self.run, state.findings)
+        self.run.report("tactical")
         await ctx.send_message(state.model_copy(update={"findings": state.findings + found}))
 
 
@@ -76,6 +80,7 @@ class WriterStep(_Step):
             if self.run.desk.planter:             # the eval's false claims ride along, outside the stats
                 claims = claims + self.run.desk.planter(self.run, claims)
             update = {"pending": claims}
+        self.run.report("rewrite" if state.retry else "writer")
         await ctx.send_message(state.model_copy(update=update | {"stats": stats}))
 
 
@@ -83,6 +88,7 @@ class RefereeStep(_Step):
     @handler
     async def handle(self, state: MomentState, ctx: WorkflowContext[MomentState]) -> None:
         approved, rejections = await referee(self.run, state.pending, state.attempt)
+        self.run.report("recheck" if state.attempt else "referee")
         planter = self.run.desk.planter
         if planter:                               # record each planted claim's verdict, then drop it for good
             planted = {c.id: c for c in state.pending if planter.is_planted(c.id)}
@@ -146,9 +152,11 @@ def build_workflow(run: MomentRun) -> Workflow:
             .build())
 
 
-async def run_moment(desk: Desk, moment: Moment) -> FeedItem:
+async def run_moment(desk: Desk, moment: Moment, on_step: Callable[[DeskStep], None] | None = None) -> FeedItem:
     started = time.perf_counter()
-    result = await build_workflow(desk.start(moment)).run(MomentState(moment=moment))
+    run = desk.start(moment)
+    run.on_step = on_step
+    result = await build_workflow(run).run(MomentState(moment=moment))
     outputs = result.get_outputs()
     if not outputs:
         raise RuntimeError(f"moment {moment.id} finished without publishing")

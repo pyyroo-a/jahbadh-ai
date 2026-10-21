@@ -10,10 +10,10 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-from jahbadh.agents.contracts import Language, Rejection, RenderedClaim
+from jahbadh.agents.contracts import DeskStep, Language, Rejection, RenderedClaim
 from jahbadh.schemas import EventType, Metric, Team
 
-StreamKind = Literal["match", "event", "state", "thinking", "feed", "failure", "renders", "cue", "end"]
+StreamKind = Literal["match", "event", "state", "thinking", "feed", "failure", "renders", "cue", "end", "step"]
 
 
 class MatchInfo(BaseModel):
@@ -67,6 +67,13 @@ class RendersUpdate(BaseModel):
     moment_id: str
     renders: list[RenderedClaim]
     rejections: list[Rejection]
+
+
+class StepUpdate(BaseModel):
+    """One of the desk's steps finished for a moment, at match second t (live and ingest only)."""
+    moment_id: str
+    step: DeskStep
+    t: float
 
 
 class StreamEnd(BaseModel):

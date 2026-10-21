@@ -17,14 +17,14 @@ from datetime import UTC, datetime
 
 from jahbadh.agents import pipeline
 from jahbadh.agents.combos import render_combo
-from jahbadh.agents.contracts import FeedItem, Language, Moment, MomentFailure, Persona
+from jahbadh.agents.contracts import DeskStep, FeedItem, Language, Moment, MomentFailure, Persona
 from jahbadh.agents.desk import Desk
 from jahbadh.agents.moments import detect_moments
 from jahbadh.agents.spotlight import spotlight_moment
 from jahbadh.api.gate import PriorityGate
 from jahbadh.api.overlay import claim_cues
 from jahbadh.api.replay import Sleep
-from jahbadh.api.stream import MatchInfo, RendersUpdate, StreamEnd, StreamItem
+from jahbadh.api.stream import MatchInfo, RendersUpdate, StepUpdate, StreamEnd, StreamItem
 from jahbadh.api.timeline import _sorted, match_timeline
 from jahbadh.schemas import Match
 
@@ -198,16 +198,20 @@ class LiveRun:
     async def _work(self, moment: Moment) -> None:
         async with self._gate.slot(first=True):
             try:
-                item = await pipeline.run_moment(self.desk, moment)
+                item = await pipeline.run_moment(self.desk, moment, on_step=lambda step: self._step(moment.id, step))
             except Exception as e:  # one bad moment (rate limit, bad reply) must never stop the match
                 self._append(StreamItem(t=self.clock, kind="failure",
                                         data=MomentFailure(moment_id=moment.id, error=f"{type(e).__name__}: {e}")))
                 return
+        self._step(moment.id, "publish")                # the landed time the page stamps on the line
         self._append(StreamItem(t=self.clock, kind="feed", data=item))
         for cue in claim_cues(item, at=self.clock, precomputed=False):     # right after the line it quotes
             self._append(StreamItem(t=self.clock, kind="cue", data=cue))
         for persona, language in self.combos:
             self._spawn(self._render(item, persona, language))
+
+    def _step(self, moment_id: str, step: DeskStep) -> None:
+        self._append(StreamItem(t=self.clock, kind="step", data=StepUpdate(moment_id=moment_id, step=step, t=self.clock)))
 
     def _persona_english(self, item: FeedItem, persona: Persona) -> asyncio.Task:
         """The persona's English for one moment, rendered once and shared by every language of that persona."""

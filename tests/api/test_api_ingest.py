@@ -190,3 +190,14 @@ def test_resume_by_last_event_id(tmp_path):
         c.post(f"/api/ingest/{rid}/close", headers=TOKEN)
         full = parse_sse(c.get(f"/api/ingest/{rid}/stream").text)
         assert parse_sse(c.get(f"/api/ingest/{rid}/stream", headers={"Last-Event-ID": "5"}).text) == full[6:]
+
+
+def test_an_ingest_moment_reports_its_steps(tmp_path):
+    with TestClient(ingest_app(tmp_path, live_mode=True)) as c:
+        rid = start(c)["run_id"]
+        c.post(f"/api/ingest/{rid}/events", json=batch(1, FIRST_GOAL.id + 5), headers=TOKEN)
+        _wait_for(c, "feed")
+        history = c.app.state.ingest.history
+        goal = next(i.data.moment.id for i in history if i.kind == "feed")
+        steps = [i.data.step for i in history if i.kind == "step" and i.data.moment_id == goal]
+        assert steps[0] == "analyst" and steps[-1] == "publish"

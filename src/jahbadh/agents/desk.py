@@ -6,7 +6,7 @@ from typing import Any, Protocol
 
 from agent_framework import Agent
 
-from jahbadh.agents.contracts import Claim, Language, Moment, Persona, Rejection
+from jahbadh.agents.contracts import Claim, DeskStep, Language, Moment, Persona, Rejection
 from jahbadh.agents.evidence import EvidenceStore
 from jahbadh.agents.llm import AgentName, make_agent
 from jahbadh.agents.prompts import INSTRUCTIONS
@@ -49,3 +49,8 @@ class MomentRun:
     moment: Moment
     store: EvidenceStore
     tools: dict[str, Callable[..., str]] = field(default_factory=dict)
+    on_step: Callable[[DeskStep], None] | None = None     # live and ingest show each finished step
+
+    def report(self, step: DeskStep) -> None:
+        if self.on_step is not None:
+            self.on_step(step)

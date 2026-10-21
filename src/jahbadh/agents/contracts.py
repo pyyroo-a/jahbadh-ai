@@ -15,6 +15,8 @@ MomentKind = Literal["goal", "big_chance", "card", "substitution", "formation_ch
                      "momentum_swing", "check_in", "full_time", "spotlight", "team_recap"]
 Persona = Literal["pundit", "casual", "fantasy"]
 Language = Literal["en", "ar", "es"]
+# The desk's steps a viewer can watch finish. Persona and Localize are part of "publish".
+DeskStep = Literal["analyst", "tactical", "writer", "referee", "rewrite", "recheck", "publish"]
 Layer = Literal["deterministic", "semantic", "persona", "localization"]
 
 

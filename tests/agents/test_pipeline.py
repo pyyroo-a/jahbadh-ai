@@ -132,3 +132,25 @@ def test_a_broken_rewrite_keeps_the_claims_already_approved():
                                                    referee_replies=[all_supported()])))
     assert [c.id for c in item.claims] == ["full_time-5400:c1"]
     assert item.stats == {"drafted": 2, "passed_first": 1, "rewritten": 0, "dropped": 1}
+
+
+def _steps_of(desk, moment) -> list[str]:
+    steps: list[str] = []
+    asyncio.run(run_moment(desk, moment, on_step=steps.append))
+    return steps
+
+
+def test_a_clean_moment_reports_its_steps_in_order():
+    steps = _steps_of(*scripted_moment(writer_replies=[good_draft()], referee_replies=[all_supported()]))
+    assert steps == ["analyst", "tactical", "writer", "referee"]
+
+
+def test_a_rewrite_reports_the_rewrite_and_the_second_check():
+    steps = _steps_of(*scripted_moment(writer_replies=[bad_number_draft(), good_draft()],
+                                       referee_replies=[all_supported()]))
+    assert steps == ["analyst", "tactical", "writer", "referee", "rewrite", "recheck"]
+
+
+def test_steps_are_optional():
+    item = asyncio.run(run_moment(*scripted_moment(writer_replies=[good_draft()], referee_replies=[all_supported()])))
+    assert len(item.claims) == 1

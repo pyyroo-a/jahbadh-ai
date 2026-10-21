@@ -238,7 +238,7 @@ def _one_claim(monkeypatch) -> None:
     """Every moment publishes one plain claim, so there is something to cue."""
     from jahbadh.agents.contracts import Claim, FeedItem
 
-    async def publish(desk, moment):
+    async def publish(desk, moment, on_step=None):
         claim = Claim(id=f"{moment.id}:c1", text=f"{moment.label}.", metric_ids=[], event_ids=list(moment.event_ids),
                       figures=[])
         return FeedItem(moment=moment, claims=[claim], renders=[], rejections=[], metrics=[], stats={}, latency_s=0.0)
@@ -394,3 +394,36 @@ def test_a_corrupt_counter_file_is_logged_with_its_path(tmp_path, caplog):
     with caplog.at_level("WARNING"):
         assert DailyLimit(path, per_day=3).remaining() == 0
     assert str(path) in caplog.text
+
+
+def test_live_steps_come_before_their_feed_and_publish_shares_its_time():
+    run = run_with()
+    asyncio.run(drain(run))
+    h = run.history
+    feeds = [n for n, i in enumerate(h) if i.kind == "feed"]
+    assert len(feeds) == 16
+    for n in feeds:
+        step = h[n - 1]
+        assert step.kind == "step" and step.data.step == "publish"
+        assert step.data.moment_id == h[n].data.moment.id and step.t == h[n].t == step.data.t
+    for n, i in enumerate(h):
+        if i.kind == "step":
+            assert any(x.kind == "thinking" and x.data.id == i.data.moment_id for x in h[:n])
+    first = [i.data.step for i in h if i.kind == "step" and i.data.moment_id == h[feeds[0]].data.moment.id]
+    assert first[:4] == ["analyst", "tactical", "writer", "referee"] and first[-1] == "publish"
+
+
+def test_a_failed_moment_sends_no_publish_step(monkeypatch):
+    broken = key_moments(DEMO)[2]
+    real = pipeline.analyse
+
+    async def flaky(run):
+        if run.moment.id == broken.id:
+            raise RuntimeError("model said no")
+        return await real(run)
+
+    monkeypatch.setattr(pipeline, "analyse", flaky)
+    run = run_with()
+    asyncio.run(drain(run))
+    steps = [i.data.step for i in run.history if i.kind == "step" and i.data.moment_id == broken.id]
+    assert "publish" not in steps and any(i.kind == "failure" for i in run.history)
