@@ -18,7 +18,7 @@ The desk shows all of it: three layouts (studio pundit, casual fan, fantasy play
 
 ## How well it works
 
-From the committed eval (`data/eval/2026-10-19-referee/report.md`): The Referee caught 47 of 47 planted false claims across 20 matches. Real first drafts that passed the Referee unchanged: 196 of 442 (44%). All 336 numbers in the published claims still pass the number check, and a key moment takes 51.3 seconds on average. The same eval is uploaded to the Foundry project as an evaluation run.
+From the committed eval (`data/eval/2026-10-19-referee/report.md`): The Referee caught 47 of 47 planted false claims across 20 matches. Real first drafts that passed the Referee unchanged: 196 of 442 (44%). All 336 of 336 published claims still pass the number check, and a key moment takes 51.3 seconds on average. The same eval is uploaded to the Foundry project as an evaluation run.
 
 ## Microsoft and Azure
 

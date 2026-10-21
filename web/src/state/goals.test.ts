@@ -84,8 +84,23 @@ describe("newestUnwatched", () => {
 
 describe("pickReplay", () => {
   const base: ReplayInputs = {
-    request: null, lineGoal: null, lineDone: false, fresh: null, watched: new Set(), overview: true, phone: false,
+    request: null, lineGoal: null, lineDone: false, fresh: null, latched: null, watched: new Set(), overview: true, phone: false,
   };
+
+  it("keeps playing a goal that started by itself after it stops being fresh", () => {
+    expect(pickReplay({ ...base, latched: 9 })).toBe(9);              // the clock is past GOAL_FRESH_S
+    expect(pickReplay({ ...base, latched: 9, fresh: 9 })).toBe(9);
+  });
+
+  it("lets a newer fresh goal take over from a started one (only the newest plays by itself)", () => {
+    expect(pickReplay({ ...base, latched: 9, fresh: 12 })).toBe(12);
+  });
+
+  it("lets a started goal go once watched, or while the viewer reads a line", () => {
+    expect(pickReplay({ ...base, latched: 9, watched: new Set([9]) })).toBeNull();
+    expect(pickReplay({ ...base, latched: 9, overview: false })).toBeNull();
+    expect(pickReplay({ ...base, latched: 9, request: 7 })).toBe(7);
+  });
 
   it("plays a chip the viewer tapped before anything else", () => {
     expect(pickReplay({ ...base, request: 7, lineGoal: 8, fresh: 9 })).toBe(7);

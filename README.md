@@ -46,9 +46,10 @@ I tested the Referee the hard way: 20 fresh matches, a real desk run on each, an
 
 - **Where they were caught:** 20 by the plain Python number and ID check, 27 by the LLM judge.
 - **3 plants found no draft to plant into** (all "wrong team"), so 47 were planted, not 50, and they aren't counted.
-- **Published numbers:** 336 of 336 numbers in the published claims still pass the number check.
+- **Published claims:** 336 of 336 published claims still pass the number check.
+- **A fair caveat, also from the report:** 13 of the 47 caught claims came from a draft the Referee also rejected in the same check. So for those 13, the planted error wasn't the only thing wrong with the draft.
 - **Speed:** 51.3 seconds per key moment on average (median 49.7, 90th percentile 61.3, slowest 118.0), for 160 key moments with 0 failures.
-- **Cost:** about $4.93 for the whole eval (1,304 model calls).
+- **Cost:** about $4.93 for the whole eval (1,304 model calls), estimated from its token counts at upper-bound list prices.
 - **Less than half of the first drafts get through untouched (44%).** That's the point: the Writer is creative, and the Referee sends the rest back once with reasons. A rewrite that still fails is dropped, never published.
 
 **The showcase, counted as it is.** The replay you see on the live site is a real desk run from 18 Oct, never edited. Its 29 key moments made 66 published claims, 43 of 83 first drafts passed straight away (52%), and the Referee sent back drafts 108 times (31 by the number check, 26 by the judge, 39 by the persona re-check and 12 by the translation check). When the eval checked the showcase again with today's number check, **17 of its 66 published claims failed it.** They stay, because the showcase is real output, and that's the honest number.

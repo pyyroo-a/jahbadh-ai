@@ -98,6 +98,11 @@ class IngestRun(LiveRun):
             for pid in (e.player_id, e.related_player_id):
                 if pid and pid not in self._players:
                     raise IngestError(f"Player {pid} in event {e.id} isn't on either team sheet.")
+            speed, shot = e.detail.get("speed_kmh"), e.detail.get("shot_id")
+            if speed is not None and not isinstance(speed, int | float):
+                raise IngestError(f"Event {e.id} has detail.speed_kmh {speed!r}; it must be a number.")
+            if shot is not None and not (isinstance(shot, int | float) and float(shot).is_integer()):
+                raise IngestError(f"Event {e.id} has detail.shot_id {shot!r}; it must be a whole event id.")
             last_t = e.t
         if any(not 0 <= f.t <= MATCH_END for f in batch.frames):
             raise IngestError("Tracking frames must be between 0 and 5400 s.")
@@ -108,22 +113,41 @@ class IngestRun(LiveRun):
             self._append(StreamItem(t=self._next_state, kind="state", data=match_state(self.match, self._next_state)))
             self._next_state += 60.0
 
+    def _draw(self, events: list[Event]) -> tuple[list[StreamItem], float]:
+        """The batch's stream items (a state for every whole minute crossed, each event and its cue) and the next
+        state's time. Nothing is sent from here, so a batch that fails part way leaves the run as it was."""
+        items, next_state = [], self._next_state
+        players, teams = _names(self.match)
+        for e in events:
+            while next_state < e.t and next_state <= MATCH_END:
+                items.append(StreamItem(t=next_state, kind="state", data=match_state(self.match, next_state)))
+                next_state += 60.0
+            items.append(StreamItem(t=e.t, kind="event", data=event_line(self.match, e)))
+            cue = _event_cue(self.match, e, players, teams, precomputed=False)
+            if cue is not None:
+                items.append(StreamItem(t=e.t, kind="cue", data=cue))
+        return items, next_state
+
     async def add(self, batch: IngestBatch) -> int:
         """Accept a batch (or raise IngestError and keep nothing). Returns how many events were taken."""
         self._check(batch)
+        kept, tracking = len(self.match.events), self.match.tracking
         self.match.events.extend(batch.events)
-        if batch.frames:
-            frames = pd.DataFrame([f.model_dump() for f in batch.frames]).astype(self.match.tracking.dtypes.to_dict())
-            self.match.tracking = pd.concat([self.match.tracking, frames], ignore_index=True)
+        try:
+            if batch.frames:
+                frames = pd.DataFrame([f.model_dump() for f in batch.frames]).astype(tracking.dtypes.to_dict())
+                self.match.tracking = pd.concat([tracking, frames], ignore_index=True)
+            items, next_state = self._draw(batch.events)
+        except Exception as e:                    # anything _check can't foresee: give the batch back, keep nothing
+            del self.match.events[kept:]
+            self.match.tracking = tracking
+            raise IngestError(f"This batch couldn't be read, so nothing from it was kept: {e}") from e
         self._last_seen = self.now()
-        players, teams = _names(self.match)
-        for e in batch.events:
-            self._states_up_to(e.t)
-            self._append(StreamItem(t=e.t, kind="event", data=event_line(self.match, e)))
-            cue = _event_cue(self.match, e, players, teams, precomputed=False)
-            if cue is not None:
-                self._append(StreamItem(t=e.t, kind="cue", data=cue))
-            self.clock = e.t
+        for item in items:
+            self._append(item)
+        self._next_state = next_state
+        if batch.events:
+            self.clock = batch.events[-1].t
         if self._agents_on and self._nobody_watching():
             self._agents_on = False                   # nobody is watching: no more model calls
         if self._agents_on and any(e.type in WAKE_TYPES for e in batch.events):

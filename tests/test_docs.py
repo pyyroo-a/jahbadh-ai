@@ -32,6 +32,18 @@ def test_the_readme_quotes_the_eval_exactly():
     assert catch in readme and first in readme
 
 
+def test_the_docs_count_what_the_eval_counted():
+    report = latest_report()
+    lines = to_markdown(report).splitlines()
+    tainted = next(line for line in lines if "came from a draft the Referee also rejected" in line)
+    claims = f"{report.numbers['matching']} of {report.numbers['checked']} published claims"
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    submission = (ROOT / "docs/submission.md").read_text(encoding="utf-8")
+    assert tainted in readme
+    assert claims in readme and claims in submission
+    assert "336 numbers" not in readme + submission
+
+
 def test_the_video_script_fits_in_two_minutes():
     script = (ROOT / "docs/video-script.md").read_text(encoding="utf-8")
     seconds = [int(m) for m in re.findall(r"^\|\s*\d+\s*\|\s*(\d+)\s*\|", script, flags=re.MULTILINE)]

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useReducer, useState } from "react";
 import { ApiError, addCombo, demoFeed, getConfig, ingestUrl, liveUrl, replayUrl, skipLive, spotlight, startLive } from "./api/client";
 import { openStream } from "./api/stream";
-import type { DeskConfig, FeedItem, Language, Persona, PlayerFollow } from "./api/types";
+import type { DeskConfig, FeedItem, Language, MatchInfo, Persona, PlayerFollow } from "./api/types";
 import ControlBar, { type Source } from "./components/ControlBar";
 import DeskFeed, { Moment } from "./components/DeskFeed";
 import EventStream from "./components/EventStream";
@@ -19,7 +19,7 @@ import TacticalView from "./components/TacticalView";
 import TopBar from "./components/TopBar";
 import { comboWaiting, initialDesk, reduce, replaySkip } from "./state/desk";
 import type { Selection } from "./state/evidence";
-import { freshGoal, goalChips, goalOfItem, newestUnwatched, pickReplay } from "./state/goals";
+import { LATCH_MS, freshGoal, goalChips, goalOfItem, newestUnwatched, pickReplay } from "./state/goals";
 import { highlights } from "./state/highlights";
 import { COMBO_NOTICES, GOAL_LABELS, WATCH_LABELS } from "./state/labels";
 import { layoutFor } from "./state/layout";
@@ -48,7 +48,9 @@ export default function App() {
   const [watched, setWatched] = useState<Set<number>>(new Set());      // goals whose build-up has played
   const [request, setRequest] = useState<{ goalId: number; nonce: number } | null>(null);   // a tapped goal chip
   const [lineDone, setLineDone] = useState<string | null>(null);      // the selected line whose replay has played
-  const [goalsOf, setGoalsOf] = useState<string | null>(null);        // the match those three belong to
+  const [latched, setLatched] = useState<number | null>(null);        // a goal replay that started by itself
+  const [latchedIn, setLatchedIn] = useState<MatchInfo | null>(null); // the stream it started in
+  const [goalsOf, setGoalsOf] = useState<string | null>(null);        // the match those four belong to
   const phone = usePhone();
 
   useEffect(() => {
@@ -176,14 +178,28 @@ export default function App() {
     setWatched(new Set());
     setRequest(null);
     setLineDone(null);
+    setLatched(null);
+  }
+  if (latchedIn !== info) {           // a skip, a speed change or a reconnect starts a new stream: drop the latch
+    setLatchedIn(info);
+    setLatched(null);
   }
   const chips = useMemo(() => (info ? goalChips(events, info) : []), [events, info]);
   const selectionKey = selection ? `${selection.momentId}|${selection.claimId}` : null;
   const lineGoal = selected ? goalOfItem(selected.item, desk.eventsById) : null;
+  const fresh = freshGoal(events, clock)?.id ?? null;
   const goalId = pickReplay({
     request: request?.goalId ?? null, lineGoal: lineGoal?.id ?? null, lineDone: lineDone !== null && lineDone === selectionKey,
-    fresh: freshGoal(events, clock)?.id ?? null, watched, overview: selected === null, phone,
+    fresh, latched, watched, overview: selected === null, phone,
   });
+  // A fresh goal that started by itself is latched once it has stayed fresh a moment, so it plays to the end even
+  // after the clock runs GOAL_FRESH_S past it. A skip's catch-up burst passes old goals far quicker than that.
+  const starting = goalId !== null && goalId === fresh && goalId !== latched && request === null && lineGoal === null ? goalId : null;
+  useEffect(() => {
+    if (starting === null) return;
+    const timer = setTimeout(() => setLatched(starting), LATCH_MS);
+    return () => clearTimeout(timer);
+  }, [starting]);
   const replayGoal = goalId === null ? null : desk.eventsById[goalId] ?? null;      // a goal the stream no longer has plays nothing
   const replay = replayGoal ? { goal: replayGoal, nonce: request?.nonce ?? 0 } : null;
   const glowing = newestUnwatched(chips, watched);
@@ -194,6 +210,7 @@ export default function App() {
   const onReplayDone = (id: number) => {
     setWatched((w) => new Set(w).add(id));
     setRequest(null);
+    if (id === latched) setLatched(null);
     if (selectionKey) setLineDone(selectionKey);
   };
 

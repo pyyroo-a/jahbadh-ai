@@ -45,15 +45,21 @@ export type ReplayInputs = {
   lineGoal: number | null;       // the goal of a selected desk line about a goal
   lineDone: boolean;             // that line's replay has already played
   fresh: number | null;          // the newest goal, while it is fresh
+  latched: number | null;        // a goal that started by itself: it plays to the end even once it isn't fresh
   watched: ReadonlySet<number>;
   overview: boolean;             // nothing selected
   phone: boolean;
 };
 
-/** Which goal plays now: a request, then a selected goal line, then a fresh goal on a wide screen's overview. */
+/** Which goal plays now: a request, then a selected goal line, then (on a wide screen's overview) a fresh goal,
+ *  then the goal that already started by itself. The fresh goal is always the newest, so it takes over. */
 export function pickReplay(i: ReplayInputs): number | null {
   if (i.request !== null) return i.request;
   if (i.lineGoal !== null) return i.lineDone ? null : i.lineGoal;
-  if (i.fresh !== null && i.overview && !i.phone && !i.watched.has(i.fresh)) return i.fresh;
+  if (!i.overview || i.phone) return null;
+  if (i.fresh !== null && !i.watched.has(i.fresh)) return i.fresh;
+  if (i.latched !== null && !i.watched.has(i.latched)) return i.latched;
   return null;
 }
+
+export const LATCH_MS = 250;     // a goal fresh this long (real time) has really just happened, not passed in a skip

@@ -95,6 +95,31 @@ def test_out_of_order_or_repeated_events_are_refused(tmp_path):
         assert (len(run.history), run.clock, len(run.match.events)) == before
 
 
+def test_a_batch_that_cannot_be_drawn_is_refused_and_nothing_is_kept(tmp_path):
+    with TestClient(ingest_app(tmp_path)) as c:
+        rid = start(c)["run_id"]
+        run = c.app.state.ingest
+        before = (len(run.history), run.clock, len(run.match.events), len(run.match.tracking))
+        bad = batch(1, 3)
+        first_pass = next(i for i, e in enumerate(bad["events"]) if e["type"] == "PASS")
+        bad["events"][first_pass]["detail"]["speed_kmh"] = "fast"                    # passes the schema, can't be drawn
+        r = c.post(f"/api/ingest/{rid}/events", json=bad, headers=TOKEN)
+        assert r.status_code == 422 and "speed_kmh" in r.json()["detail"]
+        assert (len(run.history), run.clock, len(run.match.events), len(run.match.tracking)) == before
+        assert c.post(f"/api/ingest/{rid}/events", json=batch(1, 3), headers=TOKEN).json()["accepted"] == 3
+
+
+def test_a_goal_naming_a_shot_that_isnt_a_number_is_refused(tmp_path):
+    with TestClient(ingest_app(tmp_path)) as c:
+        rid = start(c)["run_id"]
+        goal = next(e for e in DEMO.events if e.type == "GOAL")
+        bad = batch(1, goal.id)
+        bad["events"][-1]["detail"]["shot_id"] = "the last one"
+        r = c.post(f"/api/ingest/{rid}/events", json=bad, headers=TOKEN)
+        assert r.status_code == 422 and "shot_id" in r.json()["detail"]
+        assert len(c.app.state.ingest.match.events) == 0
+
+
 def test_a_player_off_the_team_sheet_is_refused(tmp_path):
     with TestClient(ingest_app(tmp_path)) as c:
         rid = start(c)["run_id"]
