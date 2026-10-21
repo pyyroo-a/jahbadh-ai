@@ -17,6 +17,7 @@ type Props = {
   heatmap: Metric | null;          // the followed player's heatmap so far
   children?: ReactNode;            // the follow panel or the single-metric focus
   overlayControls?: ReactNode;     // the broadcast overlay switch
+  banner?: ReactNode;              // live: the desk review strip across the top of the pitch
   onPitch?: ReactNode;             // drawn over the pitch: the overlay's lower-thirds
   onOverview?: () => void;         // leaves a claim's evidence for the formations
   calm?: boolean;                  // the Fan view: tiles only for a selected line's evidence
@@ -34,7 +35,7 @@ function overviewTiles(info: MatchInfo, state: MatchState | null, mode: Mode): T
   return [...tiles, { key: "xg", value: xg, label: "xG", sub: `${info.home.id} - ${info.away.id}, so far` }];
 }
 
-export default function TacticalView({ info, state, selected, eventsById, mode, heatmap, children, overlayControls, onPitch, onOverview, calm }: Props) {
+export default function TacticalView({ info, state, selected, eventsById, mode, heatmap, children, overlayControls, onPitch, onOverview, calm, banner }: Props) {
   let layers: Layer[];
   let tiles: Tile[];
   let title = "Tactical view";
@@ -61,6 +62,7 @@ export default function TacticalView({ info, state, selected, eventsById, mode, 
       <div className="pitch-wrap">
         <Pitch info={info} layers={layers} arrows={drawn.arrows} points={drawn.points} />
         {onPitch}
+        {banner}
       </div>
       <div className="note">{info.home.name} attack left to right.</div>
       {!selected && <MomentumBar info={info} momentum={state?.momentum ?? null} />}

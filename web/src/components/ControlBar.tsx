@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { MatchInfo } from "../api/types";
-import { INGEST_LABELS } from "../state/labels";
+import { INGEST_LABELS, SLOWDOWN } from "../state/labels";
 
 export type Source =
   | { kind: "replay"; matchId: string; speed: number; fromT: number; seen: number }   // seen: last moment skipped to
@@ -81,7 +81,7 @@ export default function ControlBar(p: Props) {
       )}
       {p.children}
       {live && p.thinking > 0 && (
-        <span className="muted">Live moments take about a minute, so the feed runs a little behind the clock.</span>
+        <span className="muted">{SLOWDOWN.controlNote}</span>
       )}
       {p.notice && <span className="muted">{p.notice}</span>}
     </div>

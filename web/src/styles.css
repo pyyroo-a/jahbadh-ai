@@ -35,6 +35,11 @@ body { margin: 0; min-height: 100vh; background: var(--bg); }
 .score .home { color: var(--home); }
 .score .away { color: var(--away); }
 .minute { color: var(--muted); font-variant-numeric: tabular-nums; }
+.minute.slowed { color: var(--amber); font-weight: 600; }
+.pace-pill {
+  padding: 1px 8px; border: 1px solid var(--amber); border-radius: 999px; font-size: 12px; font-weight: 600;
+  color: var(--amber); background: color-mix(in srgb, var(--amber) 15%, transparent); white-space: nowrap;
+}
 .badge {
   margin-left: auto; padding: 3px 10px; border: 1px solid var(--line); border-radius: 999px;
   color: var(--muted); font-size: 13px;
@@ -79,6 +84,11 @@ body { margin: 0; min-height: 100vh; background: var(--bg); }
 .moment { margin-bottom: 14px; }
 .tag { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 4px; }
 .thinking { padding: 8px; margin-bottom: 8px; border: 1px dashed var(--line); border-radius: 8px; color: var(--muted); }
+.thinking.checking { border-color: var(--amber); color: var(--text); }
+.step-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.step-chip { padding: 1px 6px; border: 1px solid var(--line); border-radius: 4px; font-size: 11px; color: var(--muted); }
+.step-chip.done { border-color: var(--ok); color: var(--ok); }
+.note.landed { color: var(--ok); font-style: normal; }
 .claim { padding: 8px 10px; margin-bottom: 6px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
 .claim:hover { border-color: var(--muted); }
 .claim.selected { border-color: var(--amber); background: color-mix(in srgb, var(--amber) 10%, transparent); }
@@ -190,6 +200,16 @@ body { margin: 0; min-height: 100vh; background: var(--bg); }
 /* Broadcast overlay preview */
 .overlay-controls { display: flex; align-items: center; gap: 10px; }
 .pitch-wrap { position: relative; }
+.slowdown-banner {
+  display: flex; align-items: baseline; gap: 10px; padding: 6px 12px; margin-bottom: 8px;
+  background: color-mix(in srgb, var(--bg) 90%, transparent); border-top: 2px solid var(--amber); border-bottom: 2px solid var(--amber);
+}
+.pitch-wrap .slowdown-banner { position: absolute; top: 4%; left: 0; right: 0; margin: 0; pointer-events: none; }
+.slowdown-title {
+  font-weight: 700; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase;
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.slowdown-sub { margin-left: auto; color: var(--amber); font-size: 12px; white-space: nowrap; }
 .lower-thirds { position: absolute; left: 3%; right: 3%; bottom: 6%; display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
 .lower-third {
   display: flex; align-items: center; gap: 10px; max-width: 80%; padding: 6px 12px;
@@ -214,6 +234,8 @@ body { margin: 0; min-height: 100vh; background: var(--bg); }
 }
 
 @media (max-width: 767px) {
+  .slowdown-banner { flex-direction: column; gap: 2px; }
+  .slowdown-sub { margin-left: 0; }
   .topbar { flex-wrap: wrap; gap: 6px 12px; padding: 8px 12px; }
   .brand span { display: none; }
   .brand img { width: 26px; height: 26px; }

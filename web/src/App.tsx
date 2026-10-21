@@ -9,6 +9,7 @@ import FollowPanel from "./components/FollowPanel";
 import HighlightsStrip from "./components/HighlightsStrip";
 import AnalystLayout from "./components/layouts/AnalystLayout";
 import FanLayout from "./components/layouts/FanLayout";
+import SlowdownBanner from "./components/SlowdownBanner";
 import PlayerWatchLayout from "./components/layouts/PlayerWatchLayout";
 import MetricFocus from "./components/MetricFocus";
 import ModeBar from "./components/ModeBar";
@@ -24,7 +25,7 @@ import { layoutFor } from "./state/layout";
 import { activeCues, tickingClock } from "./state/overlay";
 import { claimTags, inFocus, rankClaims, type Mode } from "./state/personal";
 import { followFirst } from "./state/players";
-import { clockSpeed } from "./state/slowdown";
+import { clockSpeed, holdingMoment, isSlowed } from "./state/slowdown";
 import { usePhone } from "./state/usePhone";
 
 export default function App() {
@@ -165,12 +166,15 @@ export default function App() {
   const layout = layoutFor(persona);
   const calm = layout === "fan", detail = layout === "analyst";
   const feedProps = { desk, persona, language, selection, onSelect: setSelection, waiting, mode, choices, calm, detail };
+  const slowed = isSlowed(desk);
+  const holding = slowed ? holdingMoment(desk) : null;
+  const banner = holding && layout === "fan" ? <SlowdownBanner moment={holding} /> : null;   // the casual fan's strip
   const tacticalView = info ? (
           <TacticalView info={info} state={state} selected={selected} eventsById={desk.eventsById} mode={mode}
             heatmap={mode.kind === "player" ? follow?.heatmap ?? null : null}
             overlayControls={<OverlayPreview on={overlayOn} onToggle={() => setOverlayOn(!overlayOn)}
               feedUrl={liveRunId ? `/api/live/${liveRunId}/overlay` : source?.kind === "ingest" ? null : `/api/replay/${info.match_id}/overlay`} />}
-            onOverview={() => setSelection(null)} calm={calm}
+            onOverview={() => setSelection(null)} calm={calm} banner={phone ? null : banner}
             onPitch={overlayOn && <LowerThirds cues={activeCues(desk.cues, onAir)} language={language} info={info} />}>
             {mode.kind === "player" && (
               <FollowPanel key={mode.playerId} info={info} playerId={mode.playerId} clock={clock} runId={runId} runKind={runKind}
@@ -186,7 +190,7 @@ export default function App() {
 
   return (
     <div className="desk">
-      <TopBar info={info} state={state} minute={minute} persona={persona} language={language}
+      <TopBar info={info} state={state} minute={minute} slowed={slowed} persona={persona} language={language}
         onPersona={(p) => pick(p, language)} onLanguage={(l) => pick(persona, l)} />
       {source && (
         <ControlBar source={source} info={info} liveMode={config?.live_mode ?? false} liveRemaining={liveRemaining}
@@ -201,7 +205,7 @@ export default function App() {
       <HighlightsStrip strip={strip} onPick={pickMoment} />
       {problem && !desk.ended && <div className="notice">{problem}</div>}
       {phone && layout === "fan" ? (
-        <FanLayout desk={desk} language={language} tactical={tacticalView} tacticalOpen={selection !== null}
+        <FanLayout desk={desk} language={language} tactical={tacticalView} tacticalOpen={selection !== null} banner={banner}
           renderItem={(item) => <Moment item={item} {...feedProps} />} />
       ) : layout === "analyst" && info ? (
         <AnalystLayout desk={desk} info={info} phone={phone} tactical={tacticalView} tacticalOpen={selection !== null}

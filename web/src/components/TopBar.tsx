@@ -1,10 +1,11 @@
 import type { Language, MatchInfo, MatchState, Persona } from "../api/types";
-import { LANGUAGES, PERSONAS } from "../state/labels";
+import { LANGUAGES, PERSONAS, SLOWDOWN } from "../state/labels";
 
 type Props = {
   info: MatchInfo | null;
   state: MatchState | null;
   minute: number;
+  slowed: boolean;                 // live: the match is at real time while the desk checks a moment
   persona: Persona;
   language: Language;
   onPersona: (p: Persona) => void;
@@ -23,7 +24,7 @@ function Pills<K extends string>({ options, value, onPick, label }:
   );
 }
 
-export default function TopBar({ info, state, minute, persona, language, onPersona, onLanguage }: Props) {
+export default function TopBar({ info, state, minute, slowed, persona, language, onPersona, onLanguage }: Props) {
   const score = (id: string) => state?.score[id] ?? 0;
   return (
     <header className="topbar">
@@ -33,7 +34,8 @@ export default function TopBar({ info, state, minute, persona, language, onPerso
           <span className="home"><span className="long">{info.home.name}</span><span className="short">{info.home.id}</span></span>
           <strong>{score(info.home.id)} - {score(info.away.id)}</strong>
           <span className="away"><span className="long">{info.away.name}</span><span className="short">{info.away.id}</span></span>
-          <span className="minute">{minute}'</span>
+          <span className={slowed ? "minute slowed" : "minute"}>{minute}'</span>
+          {slowed && <span className="pace-pill">{SLOWDOWN.pill}</span>}
         </div>
       )}
       <div className="switches">

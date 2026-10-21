@@ -1,11 +1,13 @@
 import { useState } from "react";
 import type { FeedItem, Language, MetricChoice, Persona } from "../api/types";
 import { type DeskState, rejectionsFor } from "../state/desk";
-import { speedNote } from "../state/labels";
+import { SLOWDOWN, speedNote } from "../state/labels";
 import type { Selection } from "../state/evidence";
 import { type Mode, rankClaims, recapOrder } from "../state/personal";
+import { isSlowed, landedAt, stepChips } from "../state/slowdown";
 import ClaimCard from "./ClaimCard";
 import RejectedDraft from "./RejectedDraft";
+import ThinkingCard from "./ThinkingCard";
 
 type Props = {
   desk: DeskState;
@@ -41,9 +43,11 @@ export function Moment({ item, persona, language, selection, onSelect, waiting, 
   const ranked = desk.info ? rankClaims(item, mode, desk.info, desk.eventsById, choices)
     : item.claims.map((claim) => ({ claim, focus: false }));
   const label = badge(mode, desk, choices);
+  const landed = desk.info && desk.info.mode !== "replay" ? landedAt(desk, item.moment.id) : null;
   return (
     <article className="moment">
       <div className="tag">{item.moment.label}</div>
+      {landed !== null && <div className="note landed">{SLOWDOWN.landed(landed)}</div>}
       {waiting(item) && <div className="note">Getting this ready for you...</div>}
       {ranked.map(({ claim: c, focus }) => {
         const selected = selection?.momentId === item.moment.id && selection.claimId === c.id;
@@ -75,7 +79,11 @@ export default function DeskFeed(props: Props) {
       <h2>{props.title ?? "Desk feed"}</h2>
       {desk.info && speedNote(desk.info) && <div className="note">{speedNote(desk.info)}</div>}
       {notice && <div className="note">{notice}</div>}
-      {desk.thinking.map((m) => <div key={m.id} className="thinking">The desk is thinking about {m.label}...</div>)}
+      {desk.thinking.map((m) => (
+        <ThinkingCard key={m.id} moment={m} detailed={props.persona !== "casual"}
+          holding={isSlowed(desk) && (desk.pace?.holding ?? []).includes(m.id)}
+          chips={desk.info && desk.info.mode !== "replay" ? stepChips(desk.steps[m.id] ?? []) : []} />
+      ))}
       {newestFirst.map((item) => <Moment key={item.moment.id} {...props} item={item} />)}
     </section>
   );

@@ -1,6 +1,6 @@
 // The words the desk shows for its switches and checks.
 
-import type { Language, MatchInfo, Persona, Rejection } from "../api/types";
+import type { DeskStep, Language, MatchInfo, Persona, Rejection } from "../api/types";
 
 export const PERSONAS: { key: Persona; label: string }[] = [
   { key: "pundit", label: "Studio pundit" }, { key: "casual", label: "Casual fan" }, { key: "fantasy", label: "Fantasy" },
@@ -37,17 +37,33 @@ export const FEED_LABELS = {
 };
 
 /** Shown in live and ingest mode, where the desk's lines take about a minute of real time to write and check.
- *  Live gives that minute in match minutes at its speed; an outside feed sets its own pace, so it gets no number. */
+ *  Live slows to real time for that minute; an outside feed sets its own pace, so it gets no number. */
 export function speedNote(info: MatchInfo): string | null {
   if (info.mode === "live") {
-    return "Quick lines arrive straight away. The desk's checked lines take about a minute to write and check, " +
-      `which is about ${info.speed} match minutes at ${info.speed}x, so they land a little after the moment they describe.`;
+    return "Quick lines arrive straight away. At each key moment the match slows to real time while the desk writes " +
+      "and checks its line, so it lands within about a minute of the moment.";
   }
   if (info.mode === "ingest") {
     return "Quick lines arrive straight away. The desk's checked lines land a minute or two after each moment.";
   }
   return null;
 }
+
+/** Live: the match slows to real time while the desk writes and checks a key moment's line. */
+export const SLOWDOWN = {
+  pill: "1x · desk checking",
+  banner: "Desk review",
+  bannerSub: "Slowed so the desk can write and check its line",
+  checking: (label: string) => `The desk is checking ${label}.`,
+  checkingSub: "The match is slowed to real time so its agents can write and check the line before play moves on.",
+  controlNote: "At each key moment the match slows to real time while the desk checks its line.",
+  landed: (t: number) => `Checked, landed at ${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`,
+};
+
+export const STEP_LABELS: Record<DeskStep, string> = {
+  analyst: "Analyst", tactical: "Tactical", writer: "Writer", referee: "Referee", rewrite: "Rewrite",
+  recheck: "Referee again", publish: "Publish",
+};
 
 export const WATCH_LABELS = {
   table: "Player watch · sort by any column · click a player to follow",

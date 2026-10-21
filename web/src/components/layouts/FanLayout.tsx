@@ -15,16 +15,18 @@ type Props = {
   tactical: ReactNode;                    // the tactical view, folded into a card
   tacticalOpen: boolean;                  // open it while a desk line's evidence is on the pitch
   renderItem: (item: DeskState["items"][number]) => ReactNode;
+  banner?: ReactNode;                     // live: the desk review strip while the match is slowed
 };
 
 /** The casual fan on a phone: momentum, the folded tactical view, then one woven feed of desk lines and events. */
-export default function FanLayout({ desk, language, tactical, tacticalOpen, renderItem }: Props) {
+export default function FanLayout({ desk, language, tactical, tacticalOpen, renderItem, banner }: Props) {
   const [limit, setLimit] = useState(STEP);
   const keyEvents = visibleEvents(desk.events, "key", new Set(), desk.events.length).reverse();
   const entries = weaveFeed(keyEvents, desk.items, limit);
   const more = Math.min(STEP, keyEvents.length - limit);
   return (
     <main className="phone-stack">
+      {banner}
       {desk.info && <MomentumBar info={desk.info} momentum={desk.state?.momentum ?? null} />}
       <TacticalCard forcedOpen={tacticalOpen}>{tactical}</TacticalCard>
       <section className="column happening">
