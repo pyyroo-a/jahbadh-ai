@@ -19,6 +19,13 @@ Jahbadh is my entry for the Microsoft x Premier League *Inside the Game* develop
 
 ![Quill's 42nd minute goal, replayed pass by pass on the tactical view, next to the desk's checked lines](docs/screenshots/goal-replay.png)
 
+## Where it stands (22 Oct 2026)
+
+- **Finished and live on Azure.** The [live desk](https://ca-jahbadh.nicesand-4113ef71.uaenorth.azurecontainerapps.io) opens straight into a replay of a real desk run, and anyone can run a fresh live match (3 a day for everyone).
+- **Seen working for real.** Two live runs on Azure, on 20 and 22 Oct, played whole matches with the real agents and no errors. The second one is the demo video: the match slowing to real time at each key moment, the Referee dropping lines the data can't back up, and goals replayed pass by pass.
+- **Tested.** 602 Python tests and 97 web tests run on every push. The Referee eval caught all 47 planted false claims (below).
+- **Reviewed.** A fresh reviewer read the whole final stretch of work, and everything it found that would affect someone using the desk was fixed, each with a test that failed first.
+
 ## What you can do with it
 
 - **Watch a match with a studio desk.** The match plays at 6x (or 1x, or 20x). The desk writes about every key moment: goals, big chances, cards, tactical switches, momentum swings, check-ins and full time.
@@ -125,16 +132,24 @@ Every number the agents write comes from a tool call into the analytics library,
 
 ## Azure and Microsoft
 
-- **Microsoft Foundry** hosts the `gpt-5-mini` deployment (Global Standard, UAE North) that every agent calls, with the deployment's default content filters on.
-- **Microsoft Agent Framework** runs each key moment as a workflow (Analyst, Tactical, Writer, Referee, rewrite, persona, localize), with the analytics library as the agents' tools.
-- **Azure AI Translator** writes the Arabic and Spanish versions, and a check makes sure every number and name survives the translation.
-- **Azure Container Apps** runs the whole desk (API plus the built web app) in one container, 0.5 vCPU and 1 GiB, kept always on during judging.
-- **Managed identity everywhere.** The app signs in to the container registry, Foundry and Translator with its own identity. No keys in the container.
-- **Application Insights with Foundry tracing.** Agent Framework's OpenTelemetry spans go to Foundry's own Application Insights, so every agent run, tool call and model call shows up on Foundry's Tracing page. The first live run sent 1,124 dependency spans and 112 model calls, with 0 exceptions.
-- **Foundry evaluations.** The Referee eval is uploaded to the Foundry project (above).
-- **Bicep with the Azure Developer CLI** describes everything in its own resource group, so `azd down` can only ever remove the app, never Foundry.
-- **GitHub Actions** runs the tests on every push (CI) and ships a new version on one click (Deploy), signing in to Azure with a federated identity, no secrets stored.
-- **Budgets** at $50 and $80 a month email a warning long before the student credit runs out.
+Everything runs on Azure, in UAE North, on an Azure for Students subscription.
+
+| Service | What it does in Jahbadh |
+|---|---|
+| **Microsoft Foundry** | Hosts the `gpt-5-mini` deployment (Global Standard) that every agent calls, with Foundry's default content filter (DefaultV2) on. |
+| **Microsoft Agent Framework** | Runs each key moment as a workflow: Analyst, Tactical, Writer, Referee, a rewrite when needed, then the persona and language versions. The analytics library is the agents' toolbox. |
+| **Azure AI Translator** (free tier) | Writes the Arabic and Spanish versions. A check makes sure every number and name survives the translation. |
+| **Foundry evaluations** | Holds the Referee eval as an evaluation run, with metrics equal to the report (above). |
+| **Application Insights**, with Foundry tracing | Agent Framework's OpenTelemetry spans go to Foundry's own Application Insights, so every agent run, tool call and model call shows on Foundry's Tracing page. The first live run sent 1,124 dependency spans and 112 model calls, with 0 exceptions. |
+| **Azure Container Apps** | Runs the whole desk (the API and the built web app) in one container, 0.5 vCPU and 1 GiB, kept always on during judging. |
+| **Azure Container Registry** | Holds the app's image, built by GitHub Actions. |
+| **Managed identities** | The app's identity signs in to the registry, Foundry and Translator, and a second identity lets GitHub Actions ship new versions to the app's resource group only. No keys anywhere in the container. |
+| **Azure Files** | A small file share that keeps the daily live-run counter through restarts. |
+| **Log Analytics** | Keeps the container's logs, capped at 0.15 GB a day so it stays inside the free allowance. |
+| **Bicep with the Azure Developer CLI** | Describes all of it in its own resource group, so `azd down` can only ever remove the app, never Foundry. |
+| **GitHub Actions** | Runs the tests on every push (CI) and ships a new version on one click (Deploy), signing in to Azure with a federated identity, so no secrets are stored. |
+| **Cost Management budgets** | Alerts at $50 and $80 a month, long before the student credit runs out. |
+| **Azure AI Speech** (free tier) | Narrates the demo video. It's only used for the video, not by the desk itself. |
 
 ![Agent runs, tool calls and model calls on Foundry's Tracing page](docs/screenshots/foundry-traces.png)
 
