@@ -22,7 +22,7 @@ From the committed eval (`data/eval/2026-10-19-referee/report.md`): The Referee 
 
 ## Microsoft and Azure
 
-Microsoft Foundry (`gpt-5-mini`, default content filters on), Microsoft Agent Framework workflows, Azure AI Translator, Azure Container Apps, managed identity with no keys in the container, Application Insights with Foundry's Tracing page, a Foundry evaluation run, Bicep with the Azure Developer CLI, GitHub Actions for CI and one-click deploys with a federated identity, and budget alerts.
+Microsoft Foundry (`gpt-5-mini`, default content filters on), Microsoft Agent Framework workflows, Azure AI Translator, Azure Container Apps, managed identity with no keys in the container, Application Insights with Foundry's Tracing page, a Foundry evaluation run, Bicep with the Azure Developer CLI, GitHub Actions for CI and one-click deploys with a federated identity, and budget alerts. The demo video's narration is generated with Azure AI Speech (`en-GB-RyanNeural`), over a real live run recorded on the deployed site.
 
 ## Scope, honestly
 
