@@ -1,6 +1,6 @@
 # Demo video script
 
-The demo video as it was made on 22 Oct 2026: 1:56, 1080p. The footage is a real live run on the deployed site (a fresh match, with the agents working on Microsoft Foundry), recorded in one take, plus four stills from the docs. The narration is generated with Azure AI Speech (`en-GB-RyanNeural`), and the on-screen subtitles are the narration word for word. Every claim in it comes from that run or from `data/eval/2026-10-19-referee/report.json`.
+The demo video as it was made on 22 Oct 2026: 1:56, 1080p. Watch it at https://youtu.be/UXhl4mRMxi8. The footage is a real live run on the deployed site (a fresh match, with the agents working on Microsoft Foundry), recorded in one take, plus four stills from the docs. The narration is generated with Azure AI Speech (`en-GB-RyanNeural`), and the on-screen subtitles are the narration word for word. Every claim in it comes from that run or from `data/eval/2026-10-19-referee/report.json`.
 
 | # | Seconds | On screen | Voice |
 |---|---|---|---|

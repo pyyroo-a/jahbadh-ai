@@ -6,6 +6,8 @@
 
 **Code:** https://github.com/pyyroo-a/jahbadh-ai
 
+**Demo video (1:56):** https://youtu.be/UXhl4mRMxi8
+
 ## In one line
 
 Jahbadh is a match desk run by AI agents that explains a football match as it happens, and proves every word: a Referee agent checks each claim against the data before anyone sees it, and you can click any sentence to see its evidence.

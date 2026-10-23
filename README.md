@@ -13,6 +13,8 @@
 
 <p align="center"><b><a href="https://ca-jahbadh.nicesand-4113ef71.uaenorth.azurecontainerapps.io">Open the live desk</a></b> · it starts playing straight away, no sign-in</p>
 
+<p align="center"><b><a href="https://youtu.be/UXhl4mRMxi8">Watch the 2-minute demo</a></b> · a real live run on Azure, narrated with Azure AI Speech</p>
+
 Jahbadh is my entry for the Microsoft x Premier League *Inside the Game* developer hackathon (challenge: Synthetic Match Insights Engine for Premier League Studio). It's a match desk run by AI agents that watches a synthetic football match and explains it as it happens: live lines, tactical breakdowns, heatmaps, recaps and a replay of how every goal was built. The twist is that **every claim has to be backed by the data**. A Referee agent checks each sentence before anyone sees it, and you can click any sentence to see the exact events and numbers behind it.
 
 *Jahbadh* is an Arabic word for someone who truly masters a craft. Here that means understanding simulation, tactics and writing all at once.
@@ -229,4 +231,4 @@ Everything is synthetic and football-realistic: about 1,500 events and 124,000 t
 - Design: `docs/superpowers/specs/2026-10-17-jahbadh-design.md`, plus the shipping design (`2026-10-19-plan-4-ship-design.md`), the live slow-down (`2026-10-21-live-slowdown-design.md`) and the goal build-ups (`2026-10-21-goal-arrows-design.md`) in the same folder
 - Build plans: `docs/superpowers/plans/`
 - Deploying: [`docs/deploy.md`](docs/deploy.md)
-- Demo video script: [`docs/video-script.md`](docs/video-script.md)
+- Demo video: [youtu.be/UXhl4mRMxi8](https://youtu.be/UXhl4mRMxi8), and its script: [`docs/video-script.md`](docs/video-script.md)
